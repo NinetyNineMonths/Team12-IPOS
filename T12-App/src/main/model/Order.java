@@ -2,10 +2,10 @@ package main.model;
 
 public class Order {
   private String orderId;
-    private List<OrderLine> items;
+    private List<OrderItem> items;
     private double total;
 
-    public Order(String orderId, List<OrderLine> items) {
+    public Order(String orderId, List<OrderItem> items) {
         this.orderId = orderId;
         this.items = items;
         calculateTotal();
@@ -13,7 +13,7 @@ public class Order {
 
     private void calculateTotal() {
         total = 0;
-        for (OrderLine item : items) {
+        for (OrderItem item : items) {
             total += item.getPrice();
         }
     }
@@ -22,7 +22,7 @@ public class Order {
         return orderId;
     }
 
-    public List<OrderLine> getItems() {
+    public List<OrderItem> getItems() {
         return items;
     }
 
