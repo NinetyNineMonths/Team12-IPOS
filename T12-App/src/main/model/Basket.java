@@ -1,5 +1,8 @@
 package main.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Basket {
    private List<OrderItem> items = new ArrayList<>();
 
