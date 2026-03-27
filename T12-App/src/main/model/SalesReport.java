@@ -36,7 +36,7 @@ public class SalesReport {
     @Override 
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("IPOS-PU Sales Report\n")
+        sb.append("IPOS-PU Sales Report\n");
         sb.append("Period: ").append(startDate).append(" to ").append(endDate).append("\n");
         sb.append(String.format("%-12s %-20s %13s   %-12s %-10s%n", "Item ID", "Description", "Sold (packs)", "Unit Price £", "Total £"));
         sb.append("-".repeat(75)).append("\n");

@@ -29,4 +29,7 @@ public class SalesReportItem {
         return String.format("%-12s %-20s %6d   £%6.2f   £%8.2f", itemId, description, quantitySold, unitPrice, getLineTotal());
     }
 
+    public int getQuantitySold() {
+        return quantitySold;
+    }
 }

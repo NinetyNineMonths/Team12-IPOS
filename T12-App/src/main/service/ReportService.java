@@ -1,7 +1,7 @@
 package main.service;
 
 import main.model.SalesReport;
-import main.model SalesReportItem;
+import main.model.SalesReportItem;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
