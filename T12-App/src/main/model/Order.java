@@ -1,5 +1,7 @@
 package main.model;
 
+import java.util.List;
+
 public class Order {
   private String orderId;
     private List<OrderItem> items;
