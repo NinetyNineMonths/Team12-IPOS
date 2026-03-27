@@ -5,6 +5,11 @@ import java.util.Collections;
 import java.util.List;
 
 public class SalesReport {
+
+    /* THE COMPLETE SALES REPORT.
+       HOLDS THE FULL LIST OF SalesReportItem 
+    */
+   
     private final LocalDate startDate; // first day of the report period (inclusive)
     private final LocalDate endDate; // last day of the report period (inclusive)
     private final List<SalesReportItem> items; // the product rows making up the report body
@@ -24,7 +29,7 @@ public class SalesReport {
 
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
-    public List<SalesReportItem> getItems() { return items; }
+    public List<SalesReportRow> getItems() { return items; }
     public int getTotalUnitsSold() { return totalUnitsSold; }
     public double getTotalRevenue() { return totalRevenue; }
 

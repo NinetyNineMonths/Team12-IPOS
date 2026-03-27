@@ -1,6 +1,10 @@
 package main.model;
 
 public class SalesReportItem {
+
+    /* REPRESENTS ONE ROW IN THE SALES REPORT TABLE
+       E.g 0012685, Paracetomol, 250 packs sold, £0.10 each, £25.00 total
+    */
     private final String itemId; // unique ID of each product
     private final String description; // the product name/description
     private final int quantitySold; // number of packs sold in the report period

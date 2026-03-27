@@ -2,6 +2,9 @@ package main.service;
 
 import main.model.SalesReport;
 import main.model.SalesReportItem;
+import main.model.CampaignsReport;
+import main.model.CampaignReportItem;
+import main.model.CampaignSoldItem;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -9,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,7 +76,10 @@ public class ReportService {
         return new SalesReport(startDate, endDate, items, totalUnitsSold, totalRevenue);
         }
 
-    public void generateAdvertisingCampaignsReport(LocalDate startDate, LocalDate endDate) {
+    public CampaignReport generateCampaignsReport(LocalDate startDate, LocalDate endDate) {
+            throws SQLException {
+            validateDateRange(startDate, endDate);
+        }
 
     }
 
