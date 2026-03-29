@@ -1,5 +1,10 @@
 package main.model;
 
+/* REPRESENTS A SINGLE PRODUCT ENTRY WITHIN A CAMPAIGN.
+   
+   EACH CAMPAIGN CONTAINS A LIST OF THESE, ONE PER PRODUCT INCLUDED.
+*/
+
 public class CampaignItem {
     private final String itemId;
     private final double discountRate;

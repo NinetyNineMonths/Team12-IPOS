@@ -70,16 +70,99 @@ public class ReportService {
             }
         }
 
+        // Calculates the grand totals from the returned items
         int totalUnitsSold = items.stream().mapToInt(SalesReportItem::getQuantitySold).sum();
         double totalRevenue = items.stream().mapToDouble(SalesReportItem::getLineTotal).sum();
 
         return new SalesReport(startDate, endDate, items, totalUnitsSold, totalRevenue);
         }
 
-    public CampaignReport generateCampaignsReport(LocalDate startDate, LocalDate endDate) {
+    // Generates a Campaigns Report for IPOS-PU over a given date range
+    public CampaignReport generateCampaignsReport(LocalDate startDate, LocalDate endDate) 
             throws SQLException {
-            validateDateRange(startDate, endDate);
+
+        validateDateRange(startDate, endDate);
+
+        /* These can change based on the database when its made.
+
+            This particular query fetches all campaigns active within the given date range
+        */
+        String campaignSql = "SELECT " +
+                "c.campaign_id, " +
+                "c.start_datetime, " +
+                "c.end_datetime, " +
+                "c.discount_type " +
+                "FROM campaigns c " +
+                "WHERE c.start_datetime <= ? " +
+                "AND c.end_datetime >= ? " +
+                "ORDER BY c.start_datetime";
+        
+        // This query fetches all products sold within a specific campaign
+        String soldItemsSql = "SELECT " +
+                "p.item_id, " +
+                "p.description, " +
+                "ci.discount_rate, " +
+                "SUM(oi.quantity) AS items_sold, " +
+                "SUM(oi.quantity * p.unit_price * (1 - ci.discount_rate / 100)) AS total_sales " +
+                "FROM campaign_items ci " +
+                "JOIN products p ON ci.item_id = p.item_id " +
+                "JOIN order_items oi ON oi.item_id = p.item_id " +
+                "JOIN online_orders o ON oi.order_id = o.order_id " +
+                "WHERE ci.campaign_id = ? " +
+                "AND o.status = 'COMPLETED' " +
+                "GROUP BY p.item_id, p.description, ci.discount_rate " +
+                "ORDER BY p.item_id";
+
+        List<CampaignReportItem> campaigns = new ArrayList<>();
+
+        try (PreparedStatement campaignStmt = connection.prepareStatement(campaignSql)) {
+
+            campaignStmt.setObject(1,endDate);
+            campaignStmt.setObject(2, startDate);
+
+            try (ResultSet campaignRs = campaignStmt.executeQuery()) {
+
+                while (campaignRs.next()) {
+
+                    String campaignId = campaignRs.getString("campaign_id");
+                    LocalDateTime startDateTime = campaignRs.getObject("start_datetime", LocalDateTime.class);
+                    LocalDateTime endDateTime = campaignRs.getoBJECT("end_datetime", LocalDateTime.class);
+                    String discountType = campaignRs.getString("discount_type");
+
+                    // For each campaign, fetch its sold items in a nested query
+                    List<CampaignSoldItem> soldItems = new ArrayList<>();
+
+                    try (PreparedStatement soltStmt = connection.prepareStatement(soldItemsSql)) {
+
+                        soldStmt.setString(1, campaignId);
+
+                        try (ResultSet soldRs = soldStmt.executeQuery()) {
+
+                            while (soldRs.next()) {
+
+                                String itemId = soldRs.getString("item_id");
+                                String description = soldRs.getString("description");
+                                double discountRate = soldRs.getDouble("discount_rate");
+                                int itemsSold = soldRs.getInt("items_sold");
+                                double totalSales = soldRs.getDouble("total_sales");
+
+                                soldItems.add(new CampaignSoldItem(itemId, description, discountRate, itemsSold, totalSales));
+                            }
+                        }
+                    }
+
+                    // Calculates total sales for this campaign across all products
+                    double totalCampaignSales = soldItems.stream().mapToDouble(CampaignSoldItem::getTotalSales).sum();
+                    campaigns.add(new CampaignReportItem(campaignId, startDateTime, endDateTime, discountType, soldItems, totalCampaignSales));
+
+                }
+            }
         }
+
+        // Counts how many campaigns are still active right now
+        int activeCampaignCount = (int) campaigns.stream().filter(c -> !c.getEndDateTime().isBefore(LocalDateTime.now())).count();
+
+        return new CampaignsReport(startDate, endDate, campaigns, activeCampaignCount);
 
     }
 

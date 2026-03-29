@@ -4,10 +4,12 @@ import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
+// REPRESENTS THE COMPLETE CAMPAIGNS REPORT OBJECT
+
 public class CampaignsReport {
     private final LocalDate startDate;
     private final LocalDate endDate;
-    private final List<CampaignReportItem> campaigns;
+    private final List<CampaignReportItem> campaigns; 
     private final int activeCampaignCount;
 
     public CampaignsReport(LocalDate startDate, LocalDate endDate, List<CampaignReportItem> campaigns, int activeCampaignCount) {

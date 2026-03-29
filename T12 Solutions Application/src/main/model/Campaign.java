@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
+// REPRESENTS A PROMOTION/CAMPAIGN RUN VIA THE IPOS-PU PORTAL
+
 public class Campaign {
     private final String campaignId;
     private final LocalDateTime startDateTime;
@@ -20,7 +22,8 @@ public class Campaign {
         this.items = Collections.unmodifiableList(items);
         this.cancelled = false;
     }
-
+    
+    // GETTERS
     public String getCampaignId() { return campaignId; }
     public LocalDateTime getStartDateTime() { return startDateTime; }
     public LocalDateTime getEndDateTime() { return endDateTime; }
