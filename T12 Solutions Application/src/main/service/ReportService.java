@@ -5,6 +5,8 @@ import main.model.SalesReportItem;
 import main.model.CampaignsReport;
 import main.model.CampaignReportItem;
 import main.model.CampaignSoldItem;
+import main.model.CampaignEngagementReport;
+import main.model.CampaignEngagementReport;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -31,8 +33,7 @@ public class ReportService {
         Once we decide how we're going to access the database, we can add these.
     */
 
-    public SalesReport generateSalesReport(LocalDate startDate, LocalDate endDate)
-            throws SQLException {
+    public SalesReport generateSalesReport(LocalDate startDate, LocalDate endDate) throws SQLException {
         
         validateDateRange(startDate, endDate);
 
@@ -75,11 +76,10 @@ public class ReportService {
         double totalRevenue = items.stream().mapToDouble(SalesReportItem::getLineTotal).sum();
 
         return new SalesReport(startDate, endDate, items, totalUnitsSold, totalRevenue);
-        }
+    }
 
     // Generates a Campaigns Report for IPOS-PU over a given date range
-    public CampaignReport generateCampaignsReport(LocalDate startDate, LocalDate endDate) 
-            throws SQLException {
+    public CampaignReport generateCampaignsReport(LocalDate startDate, LocalDate endDate) throws SQLException {
 
         validateDateRange(startDate, endDate);
 
@@ -126,13 +126,13 @@ public class ReportService {
 
                     String campaignId = campaignRs.getString("campaign_id");
                     LocalDateTime startDateTime = campaignRs.getObject("start_datetime", LocalDateTime.class);
-                    LocalDateTime endDateTime = campaignRs.getoBJECT("end_datetime", LocalDateTime.class);
+                    LocalDateTime endDateTime = campaignRs.getObject("end_datetime", LocalDateTime.class);
                     String discountType = campaignRs.getString("discount_type");
 
                     // For each campaign, fetch its sold items in a nested query
                     List<CampaignSoldItem> soldItems = new ArrayList<>();
 
-                    try (PreparedStatement soltStmt = connection.prepareStatement(soldItemsSql)) {
+                    try (PreparedStatement soldStmt = connection.prepareStatement(soldItemsSql)) {
 
                         soldStmt.setString(1, campaignId);
 
@@ -166,8 +166,77 @@ public class ReportService {
 
     }
 
-    public void generateCampaignEngagementReport(int campaignId) {
+    public CampaignEngagementReport generateCampaignEngagementReport(String campaignId) throws SQLException {
 
+        if (campaignId == null || campaignId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Campaign ID must not be null or empty.");
+        }
+
+        String campaignSql = "SELECT " +
+                "c.campaign_id, " +
+                "c.description, " +
+                "c.start_datetime, " +
+                "c.end_datetime, " +
+                "c.hit_count " +
+                "FROM campaigns c " +
+                "WHERE c.campaign_id = ?";
+
+        String itemsSql = "SELECT " +
+                "p.item_id, " +
+                "p.description, " +
+                "ci.hit_count, " +
+                "ci.purchase_count " +
+                "FROM campaign_items ci " +
+                "JOIN products p ON ci.item_id = p.item_id " +
+                "WHERE ci.campaign_id = ? " +
+                "ORDER BY p.item_id";
+
+        String campaignDescription = null;
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
+        int campaignHits = 0;
+
+        try (PreparedStatement campaignStmt = connection.prepareStatement(campaignSql)) {
+
+            campaignStmt.setString(1, campaignId);
+
+            try (ResultSet rs = campaignStmt.executeQuery()) {
+
+                if (rs.next()) {
+                    campaignDescription = rs.getString("description");
+                    startDateTime = rs.getObject("start_datetime", LocalDateTime.class);
+                    endDateTime = rs.getObject("end_datetime", LocalDateTime.class);
+                    campaignHits = rs.getInt("hit_count");
+                }
+            }
+        }
+
+        List<CampaignEngagementRow> rows = new ArrayList<>();
+
+        rows.add(new CampaignEngagementRow(campaignId, "Campaign hits", campaignHits, 0));
+
+        try (PreparedStatement itemsStmt = connection.prepareStatement(itemsSql)) {
+
+            try (ResultSet rs = itemsStmt.executeQuery()) {
+
+                int itemNumber = 1;
+
+                while (rs.next()) {
+
+                    String description = rs.getString("description");
+                    int hitCount = rs.getInt("hit_count");
+                    int purchaseCount = rs.getInt("purchase_count");
+                    String counterId = "Item(" + itemNumber + ") hits";
+                    String counterDescription = description + " hits";
+
+                    rows.add(new CampaignEngagementRow(counterId, counterDescription, hitCount, purchaseCount));
+
+                    itemNumber++;
+                }
+            }
+        }
+
+        return new CampaignEngagementReport(campaignId, campaignDescription, startDateTime, endDateTime, rows);
     }
 
     private void validateDateRange(LocalDate start, LocalDate end) {
