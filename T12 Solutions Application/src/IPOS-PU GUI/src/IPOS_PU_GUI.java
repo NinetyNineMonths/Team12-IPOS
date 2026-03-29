@@ -23,10 +23,13 @@ public class IPOS_PU_GUI extends JFrame {
     private final List<Order> myOrders = new ArrayList<>();
 
     private JTable productTable;
+    private JTable cartTable;
     private DefaultTableModel productTableModel;
+    private DefaultTableModel cartTableModel;
     private JLabel cartTotalLabel;
     private JTextField searchField;
     private JTabbedPane mainTabs;
+    private JButton cartBtn;
 
     public IPOS_PU_GUI() {
         super("IPOS - Public Online Pharmacy");
@@ -94,7 +97,8 @@ public class IPOS_PU_GUI extends JFrame {
         loginBtn.addActionListener(e -> JOptionPane.showMessageDialog(this, "Membership login coming in full version.\n(Non-commercial members get 10% off every 10th order!)"));
         rightPanel.add(loginBtn);
 
-        JButton cartBtn = new JButton("🛒 Cart (" + shoppingCart.size() + ")");
+        cartBtn = new JButton();
+        updateCartButton();
         cartBtn.addActionListener(e -> mainTabs.setSelectedIndex(2)); // switch to cart tab
         rightPanel.add(cartBtn);
 
@@ -156,41 +160,111 @@ public class IPOS_PU_GUI extends JFrame {
     private void refreshProductTable(List<Product> products) {
         productTableModel.setRowCount(0);
         for (Product p : products) {
-            double displayPrice = p.price;
-            // Simple promotion price check (for demo)
-            for (Promotion prom : activePromotions) {
-                if (prom.items.contains(p.id)) {
-                    displayPrice = p.price * (1 - prom.discountRate);
-                    break;
-                }
-            }
+            double displayPrice = getEffectivePrice(p);
+
             productTableModel.addRow(new Object[]{
-                    p.id, p.name, String.format("%.2f", displayPrice), p.stock, p.category
+                    p.id, p.name, String.format("%.2f", displayPrice), getAvailableStock(p), p.category
             });
         }
     }
 
     private void addSelectedToCart() {
         int row = productTable.getSelectedRow();
+
         if (row == -1) {
             JOptionPane.showMessageDialog(this, "Please select a product first.");
             return;
         }
+
         String id = (String) productTableModel.getValueAt(row, 0);
-        Product product = catalogue.stream().filter(p -> p.id.equals(id)).findFirst().orElse(null);
-        if (product == null) return;
+        Product product = catalogue.stream()
+                .filter(p -> p.id.equals(id))
+                .findFirst()
+                .orElse(null);
+
+        if (product == null) {
+            JOptionPane.showMessageDialog(this, "Selected product could not be found.");
+            return;
+        }
 
         String qtyStr = JOptionPane.showInputDialog(this, "Quantity for " + product.name + "?", "1");
-        if (qtyStr == null) return;
-        try {
-            int qty = Integer.parseInt(qtyStr);
-            if (qty < 1) throw new NumberFormatException();
-            shoppingCart.add(new CartItem(product, qty));
-            updateCartButton();
-            JOptionPane.showMessageDialog(this, qty + " × " + product.name + " added to cart!");
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Invalid quantity.");
+        if (qtyStr == null) {
+            return;
         }
+
+        try {
+            int qtyToAdd = Integer.parseInt(qtyStr.trim());
+
+            if (qtyToAdd < 1) {
+                JOptionPane.showMessageDialog(this, "Quantity must be at least 1.");
+                return;
+            }
+
+            int availableStock = getAvailableStock(product);
+
+            if (qtyToAdd > availableStock) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Cannot add " + qtyToAdd + " of this product.\n" +
+                                "Only " + availableStock + " more can be added."
+                );
+                return;
+            }
+
+            CartItem existingItem = findCartItem(product);
+
+            if (existingItem != null) {
+                existingItem.quantity += qtyToAdd;
+            } else {
+                shoppingCart.add(new CartItem(product, qtyToAdd));
+            }
+
+            refreshCartTable();
+            updateCartButton();
+            refreshBrowseView();
+
+            JOptionPane.showMessageDialog(this, qtyToAdd + " × " + product.name + " added to cart!");
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Invalid quantity. Please enter a whole number.");
+        }
+    }
+
+    private double getEffectivePrice(Product product) {
+        for (Promotion prom : activePromotions) {
+            if (prom.items.contains(product.id)) {
+                return product.price * (1 - prom.discountRate);
+            }
+        }
+        return product.price;
+    }
+
+    private int getQuantityInCart(Product product) {
+        CartItem item = findCartItem(product);
+        return (item == null) ? 0 : item.quantity;
+    }
+
+    private int getAvailableStock(Product product) {
+        return Math.max(product.stock - getQuantityInCart(product), 0);
+    }
+
+    private void refreshBrowseView() {
+        if (productTableModel == null) {
+            return;
+        }
+
+        String keyword = (searchField == null) ? "" : searchField.getText().trim().toLowerCase();
+
+        if (keyword.isEmpty()) {
+            refreshProductTable(catalogue);
+            return;
+        }
+
+        List<Product> filtered = catalogue.stream()
+                .filter(p -> p.name.toLowerCase().contains(keyword) || p.category.toLowerCase().contains(keyword))
+                .toList();
+
+        refreshProductTable(filtered);
     }
 
     private JPanel createPromotionsPanel() {
@@ -220,10 +294,15 @@ public class IPOS_PU_GUI extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         String[] columns = {"Product", "Qty", "Unit Price", "Total"};
-        DefaultTableModel cartModel = new DefaultTableModel(columns, 0);
-        JTable cartTable = new JTable(cartModel);
+        cartTableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        cartTable = new JTable(cartTableModel);
 
-        refreshCartTable(cartModel);
+        refreshCartTable();
 
         panel.add(new JScrollPane(cartTable), BorderLayout.CENTER);
 
@@ -231,7 +310,17 @@ public class IPOS_PU_GUI extends JFrame {
         cartTotalLabel = new JLabel("Total: £0.00");
         cartTotalLabel.setFont(new Font("Arial", Font.BOLD, 16));
         bottom.add(cartTotalLabel);
+        JButton decreaseBtn = new JButton("Decrease Qty");
+        decreaseBtn.addActionListener(e -> decreaseSelectedCartItemQuantity());
+        bottom.add(decreaseBtn);
 
+        JButton increaseBtn = new JButton("Increase Qty");
+        increaseBtn.addActionListener(e -> increaseSelectedCartItemQuantity());
+        bottom.add(increaseBtn);
+
+        JButton removeBtn = new JButton("Remove Selected");
+        removeBtn.addActionListener(e -> removeSelectedCartItem());
+        bottom.add(removeBtn);
         JButton checkoutBtn = new JButton("Proceed to Checkout");
         checkoutBtn.addActionListener(e -> simulateCheckout());
         bottom.add(checkoutBtn);
@@ -239,8 +328,9 @@ public class IPOS_PU_GUI extends JFrame {
         JButton clearBtn = new JButton("Clear Cart");
         clearBtn.addActionListener(e -> {
             shoppingCart.clear();
-            refreshCartTable(cartModel);
+            refreshCartTable();
             updateCartButton();
+            refreshBrowseView();
         });
         bottom.add(clearBtn);
 
@@ -248,15 +338,27 @@ public class IPOS_PU_GUI extends JFrame {
         return panel;
     }
 
-    private void refreshCartTable(DefaultTableModel model) {
-        model.setRowCount(0);
-        double total = 0;
+    private void refreshCartTable() {
+        if (cartTableModel == null) {
+            return;
+        }
+
+        cartTableModel.setRowCount(0);
+
+        double total = 0.0;
         for (CartItem item : shoppingCart) {
-            double price = item.product.price; // could apply promotion here too
+            double price = getEffectivePrice(item.product);
             double lineTotal = price * item.quantity;
             total += lineTotal;
-            model.addRow(new Object[]{item.product.name, item.quantity, String.format("%.2f", price), String.format("%.2f", lineTotal)});
+
+            cartTableModel.addRow(new Object[]{
+                    item.product.name,
+                    item.quantity,
+                    String.format("%.2f", price),
+                    String.format("%.2f", lineTotal)
+            });
         }
+
         cartTotalLabel.setText("Total: £" + String.format("%.2f", total));
     }
 
@@ -274,6 +376,9 @@ public class IPOS_PU_GUI extends JFrame {
         JOptionPane.showMessageDialog(this, "Payment successful!\nOrder ID: " + orderId + "\nConfirmation emailed.");
 
         shoppingCart.clear();
+        refreshCartTable();
+        updateCartButton();
+        refreshBrowseView();
         mainTabs.setSelectedIndex(3); // switch to My Orders
     }
 
@@ -316,9 +421,98 @@ public class IPOS_PU_GUI extends JFrame {
         return panel;
     }
 
+    private CartItem findCartItem(Product product) {
+        for (CartItem item : shoppingCart) {
+            if (item.product.id.equals(product.id)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private int getSelectedCartRow() {
+        if (cartTable == null) {
+            return -1;
+        }
+        return cartTable.getSelectedRow();
+    }
+
+    private CartItem getSelectedCartItem() {
+        int selectedRow = getSelectedCartRow();
+
+        if (selectedRow < 0 || selectedRow >= shoppingCart.size()) {
+            return null;
+        }
+
+        return shoppingCart.get(selectedRow);
+    }
+
+    private void removeSelectedCartItem() {
+        CartItem selectedItem = getSelectedCartItem();
+
+        if (selectedItem == null) {
+            JOptionPane.showMessageDialog(this, "Please select an item in the shopping cart first.");
+            return;
+        }
+
+        shoppingCart.remove(selectedItem);
+        refreshCartTable();
+        updateCartButton();
+        refreshBrowseView();
+    }
+
+    private void increaseSelectedCartItemQuantity() {
+        CartItem selectedItem = getSelectedCartItem();
+
+        if (selectedItem == null) {
+            JOptionPane.showMessageDialog(this, "Please select an item in the shopping cart first.");
+            return;
+        }
+
+        int availableStock = getAvailableStock(selectedItem.product);
+
+        if (availableStock < 1) {
+            JOptionPane.showMessageDialog(this, "No more stock is available for this product.");
+            return;
+        }
+
+        selectedItem.quantity += 1;
+        refreshCartTable();
+        updateCartButton();
+        refreshBrowseView();
+    }
+
+    private void decreaseSelectedCartItemQuantity() {
+        CartItem selectedItem = getSelectedCartItem();
+
+        if (selectedItem == null) {
+            JOptionPane.showMessageDialog(this, "Please select an item in the shopping cart first.");
+            return;
+        }
+
+        if (selectedItem.quantity > 1) {
+            selectedItem.quantity -= 1;
+        } else {
+            shoppingCart.remove(selectedItem);
+        }
+
+        refreshCartTable();
+        updateCartButton();
+        refreshBrowseView();
+    }
+
     private void updateCartButton() {
-        // Refresh header cart count - for simplicity we just recreate header each time (demo)
-        // In real app you'd use a listener pattern
+        if (cartBtn != null) {
+            cartBtn.setText("🛒 Cart (" + getCartItemCount() + ")");
+        }
+    }
+
+    private int getCartItemCount() {
+        int total = 0;
+        for (CartItem item : shoppingCart) {
+            total += item.quantity;
+        }
+        return total;
     }
 
     // ==================== Simple Model Classes ====================
