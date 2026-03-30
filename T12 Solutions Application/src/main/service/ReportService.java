@@ -1,6 +1,12 @@
 package main.service;
 
-import main.model.*;
+import main.model.SalesReport;
+import main.model.SalesReportItem;
+import main.model.CampaignsReport;
+import main.model.CampaignReportItem;
+import main.model.CampaignSoldItem;
+import main.model.CampaignEngagementReport;
+import main.model.CampaignEngagementRow;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -210,7 +216,9 @@ public class ReportService {
         rows.add(new CampaignEngagementRow(campaignId, "Campaign hits", campaignHits, 0));
 
         try (PreparedStatement itemsStmt = connection.prepareStatement(itemsSql)) {
-
+            
+            itemsStmt.setString(1, campaignId); 
+            
             try (ResultSet rs = itemsStmt.executeQuery()) {
 
                 int itemNumber = 1;

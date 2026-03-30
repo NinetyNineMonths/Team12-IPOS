@@ -31,10 +31,10 @@ public class CampaignEngagementRow {
 
     }
 
-    public Object getConversionRateFormatted() {
+    public String getConversionRateFormatted() {
 
         if (hitsCount == 0) return "N/A";
-        return String.format("%d / %d = %.2f (%.1%%)", purchases, hitsCount, getConversionRate(), getConversionRate() * 100);
+        return String.format("%d / %d = %.2f (%.1f%%)", purchases, hitsCount, getConversionRate(), getConversionRate() * 100);
 
     }
 

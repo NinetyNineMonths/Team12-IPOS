@@ -9,7 +9,7 @@ public class CampaignSoldItem {
     private int itemsSold;
     private final double totalSales;
 
-    public CampaignSoldItem(String itemId, String description, double discountRate, double totalSales, double sales) {
+    public CampaignSoldItem(String itemId, String description, double discountRate, int itemsSold, double totalSales) {
         this.itemId = itemId;
         this.description = description; 
         this.discountRate = discountRate;
@@ -21,7 +21,7 @@ public class CampaignSoldItem {
     public String getItemId() { return itemId; }
     public String getDescription() { return description; }
     public double getDiscountRate() { return discountRate; }
-    public double getItemsSold() { return itemsSold; }
+    public int getItemsSold() { return itemsSold; }
     public double getTotalSales() { return totalSales; }
 
     @Override 

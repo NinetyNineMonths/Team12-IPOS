@@ -7,6 +7,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 public class AppLauncher {
+
+    //Connection conn = DriverManager.getConnection(url, username, password);
+
     public static void main(String[] args) {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -16,6 +19,8 @@ public class AppLauncher {
         SwingUtilities.invokeLater(() -> {
             AuthService authService = new AuthService();
             WelcomeFrame welcomeFrame = new WelcomeFrame(authService);
+            //ReportService reportService = new ReportService(conn);
+
             welcomeFrame.setVisible(true);
         });
     }
