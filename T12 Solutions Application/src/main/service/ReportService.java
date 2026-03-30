@@ -1,12 +1,6 @@
 package main.service;
 
-import main.model.SalesReport;
-import main.model.SalesReportItem;
-import main.model.CampaignsReport;
-import main.model.CampaignReportItem;
-import main.model.CampaignSoldItem;
-import main.model.CampaignEngagementReport;
-import main.model.CampaignEngagementReport;
+import main.model.*;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -79,7 +73,7 @@ public class ReportService {
     }
 
     // Generates a Campaigns Report for IPOS-PU over a given date range
-    public CampaignReport generateCampaignsReport(LocalDate startDate, LocalDate endDate) throws SQLException {
+    public CampaignsReport generateCampaignsReport(LocalDate startDate, LocalDate endDate) throws SQLException {
 
         validateDateRange(startDate, endDate);
 

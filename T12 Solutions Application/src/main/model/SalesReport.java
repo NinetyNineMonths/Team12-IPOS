@@ -29,7 +29,7 @@ public class SalesReport {
 
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
-    public List<SalesReportRow> getItems() { return items; }
+    public List<SalesReportItem> getItems() { return items; }
     public int getTotalUnitsSold() { return totalUnitsSold; }
     public double getTotalRevenue() { return totalRevenue; }
 

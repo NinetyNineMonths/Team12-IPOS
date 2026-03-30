@@ -9,7 +9,7 @@ public class CampaignSoldItem {
     private int itemsSold;
     private final double totalSales;
 
-    public CampaignSoldItem(String itemId, String description, double discountRate, double totalSales) {
+    public CampaignSoldItem(String itemId, String description, double discountRate, double totalSales, double sales) {
         this.itemId = itemId;
         this.description = description; 
         this.discountRate = discountRate;

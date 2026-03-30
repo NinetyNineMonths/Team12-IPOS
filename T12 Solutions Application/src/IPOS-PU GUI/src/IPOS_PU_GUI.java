@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import main.AppLauncher;
 
 /**
  * IPOS-PU Desktop GUI Prototype
@@ -94,7 +95,9 @@ public class IPOS_PU_GUI extends JFrame {
         rightPanel.setOpaque(false);
 
         JButton loginBtn = new JButton("Login / Register");
-        loginBtn.addActionListener(e -> JOptionPane.showMessageDialog(this, "Membership login coming in full version.\n(Non-commercial members get 10% off every 10th order!)"));
+        loginBtn.addActionListener(e -> {
+            AppLauncher.main(new String[]{}); // launches AppLauncher
+        });
         rightPanel.add(loginBtn);
 
         cartBtn = new JButton();

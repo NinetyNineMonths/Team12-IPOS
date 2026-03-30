@@ -14,7 +14,7 @@ public class WelcomeFrame extends JFrame {
         this.authService = authService;
 
         setTitle("IPOS-PU Welcome");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(500, 420);
         setLocationRelativeTo(null);
 
@@ -62,6 +62,6 @@ public class WelcomeFrame extends JFrame {
             dispose();
         });
 
-        exitButton.addActionListener(e -> System.exit(0));
+        exitButton.addActionListener(e -> this.dispose());
     }
 }

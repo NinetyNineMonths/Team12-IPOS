@@ -18,7 +18,7 @@ public class Campaign {
         this.campaignId = campaignId;
         this.startDateTime = startDateTime;
         this.endDateTime = endDateTime;
-        this.discountType = discountType
+        this.discountType = discountType;
         this.items = Collections.unmodifiableList(items);
         this.cancelled = false;
     }
