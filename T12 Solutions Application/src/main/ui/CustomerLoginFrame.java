@@ -3,9 +3,11 @@ package main.ui;
 import main.model.User;
 import main.service.AuthService;
 
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+
 
 public class CustomerLoginFrame extends JFrame {
 
@@ -77,7 +79,9 @@ public class CustomerLoginFrame extends JFrame {
             }
         }
 
-        new CustomerDashboard(user, authService).setVisible(true);
+
+        new IPOS_PU_GUI(authService, user).setVisible(true);
+//        new CustomerDashboard(user, authService).setVisible(true);
         dispose();
     }
 }

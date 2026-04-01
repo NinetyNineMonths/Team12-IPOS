@@ -3,7 +3,7 @@ package main.model;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-
+import main.model.CampaignItem;
 // REPRESENTS A PROMOTION/CAMPAIGN RUN VIA THE IPOS-PU PORTAL
 
 public class Campaign {

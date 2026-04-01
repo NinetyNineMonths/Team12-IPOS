@@ -2,6 +2,8 @@ package main.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import main.model.OrderItem;
+import main.model.Product;
 
 public class Basket {
    private List<OrderItem> items = new ArrayList<>();

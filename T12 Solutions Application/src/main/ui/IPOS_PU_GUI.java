@@ -1,3 +1,5 @@
+package main.ui;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -5,9 +7,10 @@ import java.awt.event.ActionEvent;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
-import main.AppLauncher;
+
+import main.service.AuthService;
+import main.model.User;
+import main.ui.WelcomeFrame;
 
 /**
  * IPOS-PU Desktop GUI Prototype
@@ -31,9 +34,20 @@ public class IPOS_PU_GUI extends JFrame {
     private JTextField searchField;
     private JTabbedPane mainTabs;
     private JButton cartBtn;
+    private AuthService authService;
+    private User currentUser;
+    private JButton loginBtn;
 
     public IPOS_PU_GUI() {
+        this(new AuthService(), null);
+    }
+
+    public IPOS_PU_GUI(AuthService authService, User user) {
         super("IPOS - Public Online Pharmacy");
+
+        this.authService = authService;
+        this.currentUser = user;
+
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1100, 700);
         setLocationRelativeTo(null);
@@ -42,12 +56,9 @@ public class IPOS_PU_GUI extends JFrame {
         cartTotalLabel = new JLabel("Total: £0.00");
         cartTotalLabel.setFont(new Font("Arial", Font.BOLD, 16));
 
-        // Sample data
         loadSampleData();
-        // Top navigation / header
         createHeader();
 
-        // Main content with tabs
         mainTabs = new JTabbedPane();
         mainTabs.addTab("Browse Catalogue", createBrowsePanel());
         mainTabs.addTab("Promotions", createPromotionsPanel());
@@ -57,13 +68,45 @@ public class IPOS_PU_GUI extends JFrame {
 
         add(mainTabs, BorderLayout.CENTER);
 
-        // Status bar
         JLabel status = new JLabel(" Welcome to IPOS-PU • Connected to merchant stock • " + LocalDateTime.now().toLocalDate());
         status.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
         add(status, BorderLayout.SOUTH);
 
         setVisible(true);
     }
+
+//    public ui.IPOS_PU_GUI() {
+//        super("IPOS - Public Online Pharmacy");
+//        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+//        setSize(1100, 700);
+//        setLocationRelativeTo(null);
+//        setLayout(new BorderLayout());
+//
+//        cartTotalLabel = new JLabel("Total: £0.00");
+//        cartTotalLabel.setFont(new Font("Arial", Font.BOLD, 16));
+//
+//        // Sample data
+//        loadSampleData();
+//        // Top navigation / header
+//        createHeader();
+//
+//        // Main content with tabs
+//        mainTabs = new JTabbedPane();
+//        mainTabs.addTab("Browse Catalogue", createBrowsePanel());
+//        mainTabs.addTab("Promotions", createPromotionsPanel());
+//        mainTabs.addTab("Shopping Cart", createCartPanel());
+//        mainTabs.addTab("My Orders", createOrdersPanel());
+//        mainTabs.addTab("Membership", createMembershipPanel());
+//
+//        add(mainTabs, BorderLayout.CENTER);
+//
+//        // Status bar
+//        JLabel status = new JLabel(" Welcome to IPOS-PU • Connected to merchant stock • " + LocalDateTime.now().toLocalDate());
+//        status.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
+//        add(status, BorderLayout.SOUTH);
+//
+//        setVisible(true);
+//    }
 
     private void loadSampleData() {
         // Catalogue
@@ -94,10 +137,21 @@ public class IPOS_PU_GUI extends JFrame {
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         rightPanel.setOpaque(false);
 
-        JButton loginBtn = new JButton("Login / Register");
+        loginBtn = new JButton(currentUser == null ? "Login / Register" : "Logout");
+
         loginBtn.addActionListener(e -> {
-            AppLauncher.main(new String[]{}); // launches AppLauncher
+            if (currentUser == null) {
+                new WelcomeFrame(authService).setVisible(true);
+            } else {
+                new IPOS_PU_GUI(authService, null).setVisible(true);
+            }
+            dispose();
         });
+
+//        JButton loginBtn = new JButton("Login / Register");
+//        loginBtn.addActionListener(e -> {
+//            AppLauncher.main(new String[]{}); // launches AppLauncher
+//        });
         rightPanel.add(loginBtn);
 
         cartBtn = new JButton();
@@ -409,14 +463,23 @@ public class IPOS_PU_GUI extends JFrame {
         nonComm.setBorder(BorderFactory.createTitledBorder("Non-Commercial Member"));
         nonComm.add(new JLabel("<html><b>10% off every 10th order!</b><br>Quick email registration</html>"));
         JButton regNon = new JButton("Register (Non-Commercial)");
-        regNon.addActionListener(e -> JOptionPane.showMessageDialog(this, "Registration complete!\nUsername = your email\nPassword sent."));
+        regNon.addActionListener(e -> {
+            new WelcomeFrame(authService).setVisible(true);
+            dispose();
+        });
+//        JButton regNon = new JButton("Register (Non-Commercial)");
+//        regNon.addActionListener(e -> JOptionPane.showMessageDialog(this, "Registration complete!\nUsername = your email\nPassword sent."));
         nonComm.add(regNon);
 
         JPanel comm = new JPanel();
         comm.setBorder(BorderFactory.createTitledBorder("Commercial Member"));
         comm.add(new JLabel("<html>Business / Company account<br>Application reviewed by InfoPharma</html>"));
         JButton regComm = new JButton("Apply as Commercial");
-        regComm.addActionListener(e -> JOptionPane.showMessageDialog(this, "Application forwarded to IPOS-SA for review."));
+        regComm.addActionListener(e -> {
+            new WelcomeFrame(authService).setVisible(true);
+            dispose();
+        });
+//        regComm.addActionListener(e -> JOptionPane.showMessageDialog(this, "Application forwarded to IPOS-SA for review."));
         comm.add(regComm);
 
         panel.add(nonComm);
