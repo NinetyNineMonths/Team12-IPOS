@@ -2,6 +2,7 @@ package main;
 
 import main.service.AuthService;
 import main.ui.WelcomeFrame;
+import main.db.DatabaseManager;
 
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -17,10 +18,9 @@ public class AppLauncher {
         }
 
         SwingUtilities.invokeLater(() -> {
+            DatabaseManager.initialise();
             AuthService authService = new AuthService();
             WelcomeFrame welcomeFrame = new WelcomeFrame(authService);
-            //ReportService reportService = new ReportService(conn);
-
             welcomeFrame.setVisible(true);
         });
     }
