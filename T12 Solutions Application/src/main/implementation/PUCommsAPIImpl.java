@@ -10,11 +10,11 @@ public class PUCommsAPIImpl implements PUCommsAPI {
     }
 
     /**
-      Simulates sending an email by printing details 
+      Simulates sending an email by printing details
       Returns false if the recipient address or body is null or empty.
       @param to      email address
       @param subject the email subject line
-      @param body    the body text 
+      @param body    the body text
      */
     @Override
     public boolean sendEmail(String to, String subject, String body) {
@@ -35,7 +35,7 @@ public class PUCommsAPIImpl implements PUCommsAPI {
       Validates orderId, amount, and card number before simulating authorisation. Card number must be at least 12 digits. Only the last 4 digits are shown in the output.
       Returns false if any input is invalid.
       @param orderId    the unique ID of the order being paid for
-      @param amount     the total amount to charge 
+      @param amount     the total amount to charge
       @param cardNumber the customer's card number
      */
     public boolean authorisePayment(String orderId, double amount, String cardNumber) {
@@ -74,10 +74,10 @@ public class PUCommsAPIImpl implements PUCommsAPI {
 
     /**
      * Records a transaction to the console (prototype substitute for database logging).
-      @param refId     a unique reference ID 
+      @param refId     a unique reference ID
       @param type      type of transaction
       @param outcome   result
-      @param timestamp date and time of the transaction 
+      @param timestamp date and time of the transaction
      */
     @Override
     public void recordTransaction(String refId, String type, String outcome, String timestamp) {

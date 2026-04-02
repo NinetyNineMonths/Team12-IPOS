@@ -2,6 +2,7 @@ package main.ui;
 
 import main.model.User;
 import main.service.AuthService;
+import main.*;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -68,7 +69,18 @@ public class AdminLoginFrame extends JFrame {
             return;
         }
 
-        new AdminDashboard(user, authService).setVisible(true);
+        new AdminDashboard().setVisible(true);
         dispose();
+//
+//        if (user == null || !user.isAdmin()) {
+//            JOptionPane.showMessageDialog(this,
+//                    "Invalid admin login.",
+//                    "Login Failed",
+//                    JOptionPane.ERROR_MESSAGE);
+//            return;
+//        }
+//
+//        new AdminDashboard(user, authService).setVisible(true);
+//        dispose();
     }
 }
