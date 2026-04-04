@@ -1,6 +1,9 @@
 package main.ui;
 
 import main.service.AuthService;
+import main.api.PUCommsAPI;
+import main.implementation.PUCommsAPIImpl;
+import main.ui.WelcomeFrame;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -69,13 +72,32 @@ public class NonCommercialRegistrationFrame extends JFrame {
             return;
         }
 
+        PUCommsAPI comms = new PUCommsAPIImpl();
+
+        comms.sendEmail(
+                email,
+                "Your IPOS-PU Login Details",
+                "Welcome to IPOS-PU!\n\n" +
+                        "Username: " + email + "\n" +
+                        "Temporary Password: " + tempPassword + "\n\n" +
+                        "You will be required to change your password on first login."
+        );
+
         JOptionPane.showMessageDialog(this,
-                "Registration successful!\n\nTemporary password: " + tempPassword +
-                        "\n\nYou will be asked to change it on first login.",
+                "Registration successful!\n\n" +
+                        "A login email has been generated.\n" +
+                        "Temporary password: " + tempPassword + "\n\n" +
+                        "You will be asked to change it on first login.",
                 "Success",
                 JOptionPane.INFORMATION_MESSAGE);
 
-        new WelcomeFrame(authService).setVisible(true);
-        dispose();
+//        JOptionPane.showMessageDialog(this,
+//                "Registration successful!\n\nTemporary password: " + tempPassword +
+//                        "\n\nYou will be asked to change it on first login.",
+//                "Success",
+//                JOptionPane.INFORMATION_MESSAGE);
+//
+//        new WelcomeFrame(authService).setVisible(true);
+//        dispose();
     }
 }
