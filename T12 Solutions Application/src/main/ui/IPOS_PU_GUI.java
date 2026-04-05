@@ -7,6 +7,8 @@ import java.awt.event.ActionEvent;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 import main.service.AuthService;
 import main.model.User;
@@ -14,6 +16,9 @@ import main.model.Campaign;
 import main.model.CampaignItem;
 import main.service.CampaignStore;
 import main.ui.WelcomeFrame;
+import main.db.DatabaseManager;
+import main.service.ReportService;
+
 
 /**
  * IPOS-PU Desktop GUI Prototype
@@ -40,10 +45,7 @@ public class IPOS_PU_GUI extends JFrame {
     private AuthService authService;
     private User currentUser;
     private JButton loginBtn;
-    private JTable ordersTable;
-    private DefaultTableModel ordersTableModel;
-
-    private int completedOrderCount = 0;
+    private ReportService reportService;
 
     public IPOS_PU_GUI() {
         this(new AuthService(), null);
@@ -54,10 +56,6 @@ public class IPOS_PU_GUI extends JFrame {
 
         this.authService = authService;
         this.currentUser = user;
-
-        if (currentUser != null) {
-            completedOrderCount = 0;
-        }
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1100, 700);
@@ -86,29 +84,38 @@ public class IPOS_PU_GUI extends JFrame {
         setVisible(true);
     }
 
-    private boolean qualifiesForTenthOrderDiscount() {
-        if (currentUser == null) {
-            return false;
-        }
-
-        return (completedOrderCount + 1) % 10 == 0;
-    }
-
-    private double calculateCartTotalWithMemberDiscount() {
-        double total = 0.0;
-
-        for (CartItem item : shoppingCart) {
-            double price = getEffectivePrice(item.product);
-            total += price * item.quantity;
-        }
-
-        if (qualifiesForTenthOrderDiscount()) {
-            total = total * 0.90;
-        }
-
-        return total;
-    }
-
+//    public ui.IPOS_PU_GUI() {
+//        super("IPOS - Public Online Pharmacy");
+//        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+//        setSize(1100, 700);
+//        setLocationRelativeTo(null);
+//        setLayout(new BorderLayout());
+//
+//        cartTotalLabel = new JLabel("Total: £0.00");
+//        cartTotalLabel.setFont(new Font("Arial", Font.BOLD, 16));
+//
+//        // Sample data
+//        loadSampleData();
+//        // Top navigation / header
+//        createHeader();
+//
+//        // Main content with tabs
+//        mainTabs = new JTabbedPane();
+//        mainTabs.addTab("Browse Catalogue", createBrowsePanel());
+//        mainTabs.addTab("Promotions", createPromotionsPanel());
+//        mainTabs.addTab("Shopping Cart", createCartPanel());
+//        mainTabs.addTab("My Orders", createOrdersPanel());
+//        mainTabs.addTab("Membership", createMembershipPanel());
+//
+//        add(mainTabs, BorderLayout.CENTER);
+//
+//        // Status bar
+//        JLabel status = new JLabel(" Welcome to IPOS-PU • Connected to merchant stock • " + LocalDateTime.now().toLocalDate());
+//        status.setBorder(BorderFactory.createEmptyBorder(4, 10, 4, 10));
+//        add(status, BorderLayout.SOUTH);
+//
+//        setVisible(true);
+//    }
 
     private void loadSampleData() {
         // Catalogue
@@ -118,6 +125,11 @@ public class IPOS_PU_GUI extends JFrame {
         catalogue.add(new Product("ALL004", "Allergy Relief (Cetirizine 10mg)", 3.79, 45, "Antihistamine"));
         catalogue.add(new Product("BAND005", "Bandages & Plasters Pack", 5.49, 30, "First Aid"));
 
+        // Active promotions (example)
+//        activePromotions.add(new Promotion("SPRING25", "Spring Health Boost", "01/04/2026", "30/04/2026",
+//                List.of("PARA001", "VIT003"), 0.15)); // 15% off
+//        activePromotions.add(new Promotion("PAINRELIEF", "Pain Relief Week", "20/03/2026", "27/03/2026",
+//                List.of("IBU002", "ALL004"), 0.20)); // 20% off
     }
 
     private void createHeader() {
@@ -145,6 +157,10 @@ public class IPOS_PU_GUI extends JFrame {
             dispose();
         });
 
+//        JButton loginBtn = new JButton("Login / Register");
+//        loginBtn.addActionListener(e -> {
+//            AppLauncher.main(new String[]{}); // launches AppLauncher
+//        });
         rightPanel.add(loginBtn);
 
         cartBtn = new JButton();
@@ -297,6 +313,14 @@ public class IPOS_PU_GUI extends JFrame {
         return bestPrice;
     }
 
+//    private double getEffectivePrice(Product product) {
+//        for (Promotion prom : activePromotions) {
+//            if (prom.items.contains(product.id)) {
+//                return product.price * (1 - prom.discountRate);
+//            }
+//        }
+//        return product.price;
+//    }
 
     private int getQuantityInCart(Product product) {
         CartItem item = findCartItem(product);
@@ -327,6 +351,24 @@ public class IPOS_PU_GUI extends JFrame {
         refreshPromotionsView();
     }
 
+//    private void refreshBrowseView() {
+//        if (productTableModel == null) {
+//            return;
+//        }
+//
+//        String keyword = (searchField == null) ? "" : searchField.getText().trim().toLowerCase();
+//
+//        if (keyword.isEmpty()) {
+//            refreshProductTable(catalogue);
+//            return;
+//        }
+//
+//        List<Product> filtered = catalogue.stream()
+//                .filter(p -> p.name.toLowerCase().contains(keyword) || p.category.toLowerCase().contains(keyword))
+//                .toList();
+//
+//        refreshProductTable(filtered);
+//    }
 
     private JPanel createPromotionsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
@@ -373,6 +415,27 @@ public class IPOS_PU_GUI extends JFrame {
         }
     }
 
+//    private JPanel createPromotionsPanel() {
+//        JPanel panel = new JPanel(new BorderLayout());
+//        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+//
+//        JTextArea promoArea = new JTextArea();
+//        promoArea.setEditable(false);
+//        promoArea.setFont(new Font("Arial", Font.PLAIN, 14));
+//
+//        StringBuilder sb = new StringBuilder("=== ACTIVE PROMOTIONS ===\n\n");
+//        for (Promotion p : activePromotions) {
+//            sb.append(p.name).append(" (").append(p.id).append(")\n");
+//            sb.append("Valid: ").append(p.startDate).append(" – ").append(p.endDate).append("\n");
+//            sb.append("Discount: ").append((int)(p.discountRate * 100)).append("% off on: ").append(p.items).append("\n\n");
+//        }
+//        promoArea.setText(sb.toString());
+//
+//        panel.add(new JLabel("Current Promotions (click any to browse discounted items)"), BorderLayout.NORTH);
+//        panel.add(new JScrollPane(promoArea), BorderLayout.CENTER);
+//
+//        return panel;
+//    }
 
     private JPanel createCartPanel() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
@@ -444,13 +507,7 @@ public class IPOS_PU_GUI extends JFrame {
             });
         }
 
-        double finalTotal = calculateCartTotalWithMemberDiscount();
-
-        if (qualifiesForTenthOrderDiscount()) {
-            cartTotalLabel.setText("Total: £" + String.format("%.2f", finalTotal) + " (includes 10% member discount)");
-        } else {
-            cartTotalLabel.setText("Total: £" + String.format("%.2f", finalTotal));
-        }
+        cartTotalLabel.setText("Total: £" + String.format("%.2f", total));
     }
 
     private void simulateCheckout() {
@@ -458,75 +515,35 @@ public class IPOS_PU_GUI extends JFrame {
             JOptionPane.showMessageDialog(this, "Cart is empty!");
             return;
         }
-
         String card = JOptionPane.showInputDialog(this, "Enter card number (demo):", "4242 4242 4242 4242");
         if (card == null || card.length() < 4) return;
 
-        boolean tenthDiscountApplied = qualifiesForTenthOrderDiscount();
-        double finalTotal = calculateCartTotalWithMemberDiscount();
-
+        // Simulate successful payment
         String orderId = "ORD-" + System.currentTimeMillis();
         myOrders.add(new Order(orderId, new ArrayList<>(shoppingCart), LocalDateTime.now(), "Received"));
-
-        completedOrderCount++;
-
-        if (tenthDiscountApplied) {
-            JOptionPane.showMessageDialog(this,
-                    "Payment successful!\nOrder ID: " + orderId +
-                            "\nA 10% member discount was applied.\n" +
-                            "Final total: £" + String.format("%.2f", finalTotal) +
-                            "\nConfirmation emailed.");
-        } else {
-            JOptionPane.showMessageDialog(this,
-                    "Payment successful!\nOrder ID: " + orderId +
-                            "\nFinal total: £" + String.format("%.2f", finalTotal) +
-                            "\nConfirmation emailed.");
-        }
+        JOptionPane.showMessageDialog(this, "Payment successful!\nOrder ID: " + orderId + "\nConfirmation emailed.");
 
         shoppingCart.clear();
         refreshCartTable();
         updateCartButton();
         refreshBrowseView();
-        refreshOrdersTable();
-        mainTabs.setSelectedIndex(3);
+        mainTabs.setSelectedIndex(3); // switch to My Orders
     }
-
 
     private JPanel createOrdersPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
         String[] cols = {"Order ID", "Date", "Items", "Status"};
-        ordersTableModel = new DefaultTableModel(cols, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-
-        ordersTable = new JTable(ordersTableModel);
-        refreshOrdersTable();
-
-        panel.add(new JScrollPane(ordersTable), BorderLayout.CENTER);
-        return panel;
-    }
-
-
-    private void refreshOrdersTable() {
-        if (ordersTableModel == null) {
-            return;
-        }
-
-        ordersTableModel.setRowCount(0);
+        DefaultTableModel model = new DefaultTableModel(cols, 0);
+        JTable table = new JTable(model);
 
         for (Order o : myOrders) {
-            ordersTableModel.addRow(new Object[]{
-                    o.id,
-                    o.date.toLocalDate(),
-                    o.items.size() + " items",
-                    o.status
-            });
+            model.addRow(new Object[]{o.id, o.date.toLocalDate(), o.items.size() + " items", o.status});
         }
+
+        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        return panel;
     }
 
     private JPanel createMembershipPanel() {
@@ -541,6 +558,8 @@ public class IPOS_PU_GUI extends JFrame {
             new WelcomeFrame(authService).setVisible(true);
             dispose();
         });
+//        JButton regNon = new JButton("Register (Non-Commercial)");
+//        regNon.addActionListener(e -> JOptionPane.showMessageDialog(this, "Registration complete!\nUsername = your email\nPassword sent."));
         nonComm.add(regNon);
 
         JPanel comm = new JPanel();
@@ -551,6 +570,7 @@ public class IPOS_PU_GUI extends JFrame {
             new WelcomeFrame(authService).setVisible(true);
             dispose();
         });
+//        regComm.addActionListener(e -> JOptionPane.showMessageDialog(this, "Application forwarded to IPOS-SA for review."));
         comm.add(regComm);
 
         panel.add(nonComm);
@@ -690,6 +710,15 @@ public class IPOS_PU_GUI extends JFrame {
 
     // ==================== MAIN ====================
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(IPOS_PU_GUI::new);
-    }
+        SwingUtilities.invokeLater(() -> {
+            try {
+                DatabaseManager.initialise();
+                Connection conn = DatabaseManager.getConnection();
+                IPOS_PU_GUI gui = new IPOS_PU_GUI();
+                gui.reportService = new ReportService(conn);
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(null, "Database connection failed: " + e.getMessage());
+            }
+        });
+    }    
 }
