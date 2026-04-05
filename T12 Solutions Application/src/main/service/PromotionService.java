@@ -15,7 +15,7 @@ public class PromotionService {
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
-    // ───────────────────── CREATE ─────────────────────
+    // To create campaigns
 
     public boolean createCampaign(Campaign campaign) {
         if (campaign == null) return false;
@@ -60,7 +60,7 @@ public class PromotionService {
         }
     }
 
-    // ───────────────────── READ ───────────────────────
+    // To read campaigns
 
     public Campaign getCampaignById(String campaignId) {
         if (campaignId == null || campaignId.trim().isEmpty()) return null;
@@ -128,7 +128,7 @@ public class PromotionService {
         return campaigns;
     }
 
-    // ───────────────────── UPDATE ─────────────────────
+    // To update campaigns
 
     public boolean updateCampaign(String campaignId, LocalDateTime newStart,
                                   LocalDateTime newEnd, String newDiscountType) {
@@ -159,7 +159,7 @@ public class PromotionService {
         }
     }
 
-    // ───────────────────── CANCEL ─────────────────────
+    // To cancel campaigns
 
     public boolean cancelCampaign(String campaignId) {
         if (campaignId == null || campaignId.trim().isEmpty()) return false;
@@ -178,7 +178,7 @@ public class PromotionService {
         }
     }
 
-    // ───────────────────── DELETE ─────────────────────
+    // To delete campaigns
 
     public boolean deleteCampaign(String campaignId) {
         if (campaignId == null || campaignId.trim().isEmpty()) return false;
@@ -206,7 +206,7 @@ public class PromotionService {
         }
     }
 
-    // ───────────────────── HELPERS ─────────────────────
+    // Helpers
 
     private boolean validateCampaign(Campaign campaign) {
         if (campaign.getCampaignId() == null || campaign.getCampaignId().trim().isEmpty()) return false;

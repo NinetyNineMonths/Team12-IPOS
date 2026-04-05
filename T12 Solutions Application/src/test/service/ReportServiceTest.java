@@ -14,28 +14,21 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
 
-/**
- * ReportServiceTest – IPOS-PU
- *
- * JUnit 5 tests for ReportService, based on the interface test plan:
- *
- */
+// Tests for the ReportService
+
 public class ReportServiceTest {
 
     private Connection connection;
     private ReportService reportService;
 
-    // -----------------------------------------------------------------------
-    // Setup – runs before every single test
-    // -----------------------------------------------------------------------
-
-    /**
+    /*
+     * SETUP
+     * 
      * Creates a fresh in-memory SQLite database before each test and sets up
      * the tables and sample data needed for the tests to run.
      *
-     * Using ":memory:" means the database is thrown away after each test,
-     * so tests can never interfere with each other.
      */
+
     @BeforeEach
     void setUp() throws SQLException {
         connection = DriverManager.getConnection("jdbc:sqlite::memory:");
@@ -43,16 +36,10 @@ public class ReportServiceTest {
         createTablesAndSeedData();
     }
 
-    // -----------------------------------------------------------------------
-    // PU-RPT-01: Valid sales report generation
-    // -----------------------------------------------------------------------
-
-    /**
-     * PU-RPT-01
-     * Scenario: Valid report generation
-     * Input: Valid date range
-     * Expected Result: Sales totals correctly reported
+    /*
+     * PU-RPT-01 - Valid Sales Report Generation
      */
+
     @Test
     void testGenerateSalesReport_ValidDateRange_ReturnsSalesData() throws SQLException {
         LocalDate start = LocalDate.of(2025, 1, 1);
@@ -73,17 +60,10 @@ public class ReportServiceTest {
         assertEquals(end,   report.getEndDate(),   "End date should match input");
     }
 
-    // -----------------------------------------------------------------------
-    // PU-RPT-02: Invalid date range rejected for sales report
-    // -----------------------------------------------------------------------
-
-    /**
-     * PU-RPT-02
-     * Scenario: Invalid date range
-     * Input: startDate > endDate
-     * Expected Result: Report generation rejected
-     * Error Condition: InvalidDateRange
+    /*
+     * PU-RPT-02 - Invalid date range rejected for sales report
      */
+
     @Test
     void testGenerateSalesReport_StartDateAfterEndDate_ThrowsException() {
         LocalDate start = LocalDate.of(2025, 12, 31);
@@ -97,9 +77,8 @@ public class ReportServiceTest {
 
     /**
      * PU-RPT-02 (edge case)
-     * Scenario: Null dates passed in
-     * Expected Result: Report generation rejected
      */
+
     @Test
     void testGenerateSalesReport_NullDates_ThrowsException() {
         assertThrows(IllegalArgumentException.class, () -> {
@@ -107,15 +86,8 @@ public class ReportServiceTest {
         }, "Should throw IllegalArgumentException when dates are null");
     }
 
-    // -----------------------------------------------------------------------
-    // PU-RPT-03: Valid campaigns report generation
-    // -----------------------------------------------------------------------
-
-    /**
-     * PU-RPT-03
-     * Scenario: Generate campaigns report for all campaigns in a valid period
-     * Input: Valid date range
-     * Expected Result: Campaign list + totals returned
+    /*
+     * PU-RPT-03 - Valid Campaigns Report Generation
      */
     @Test
     void testGenerateCampaignsReport_ValidDateRange_ReturnsCampaignData() throws SQLException {
@@ -135,11 +107,10 @@ public class ReportServiceTest {
         assertEquals(end,   report.getEndDate(),   "End date should match input");
     }
 
-    /**
+    /*
      * PU-RPT-03 (invalid date range)
-     * Input: startDate > endDate
-     * Expected Result: Report generation rejected
      */
+
     @Test
     void testGenerateCampaignsReport_InvalidDateRange_ThrowsException() {
         LocalDate start = LocalDate.of(2025, 12, 31);
@@ -150,16 +121,10 @@ public class ReportServiceTest {
         }, "Should throw IllegalArgumentException when startDate is after endDate");
     }
 
-    // -----------------------------------------------------------------------
-    // PU-RPT-04: Campaigns report returns empty when no campaigns exist
-    // -----------------------------------------------------------------------
-
-    /**
-     * PU-RPT-04
-     * Scenario: Period includes no campaigns
-     * Input: Valid date range but no campaigns exist in that period
-     * Expected Result: Empty report returned
+    /*
+     * PU-RPT-04 - Campaigns report returns empty when no campaigns exist
      */
+
     @Test
     void testGenerateCampaignsReport_NoCampaignsInPeriod_ReturnsEmptyReport() throws SQLException {
         // Use a date range far in the future where no seeded campaigns exist
@@ -173,12 +138,9 @@ public class ReportServiceTest {
         assertEquals(0, report.getActiveCampaignCount(), "Active campaign count should be 0");
     }
 
-    // -----------------------------------------------------------------------
-    // Helper – create tables and insert sample data for tests
-    // -----------------------------------------------------------------------
 
     /**
-     * Creates the minimum database tables needed for ReportService to run,
+     * Helpers - Creates the minimum database tables needed for ReportService to run,
      * and inserts sample data matching what the SQL queries expect.
      *
      * TODO: Update table and column names here to match the database schema when it is agreed upon.
