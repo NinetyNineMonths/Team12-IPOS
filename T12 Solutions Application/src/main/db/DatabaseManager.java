@@ -11,7 +11,7 @@ public class DatabaseManager {
     }
 
     public static void initialise() {
-        String sql = """
+        String usersTable = """
             CREATE TABLE IF NOT EXISTS users (
                 email       TEXT    PRIMARY KEY,
                 full_name   TEXT    NOT NULL,
@@ -21,9 +21,31 @@ public class DatabaseManager {
             );
         """;
 
+        String campaignsTable = """
+            CREATE TABLE IF NOT EXISTS campaigns (
+                campaign_id   TEXT    PRIMARY KEY,
+                start_date    TEXT    NOT NULL,
+                end_date      TEXT    NOT NULL,
+                discount_type TEXT    NOT NULL,
+                cancelled     INTEGER NOT NULL DEFAULT 0
+            );
+        """;
+
+        String campaignItemsTable = """
+            CREATE TABLE IF NOT EXISTS campaign_items (
+                campaign_id   TEXT    NOT NULL,
+                item_id       TEXT    NOT NULL,
+                discount_rate REAL    NOT NULL,
+                PRIMARY KEY (campaign_id, item_id),
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id)
+            );
+        """;
+
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
-            stmt.execute(sql);
+            stmt.execute(usersTable);
+            stmt.execute(campaignsTable);
+            stmt.execute(campaignItemsTable);
             seedUsersIfEmpty(conn);
         } catch (SQLException e) {
             throw new RuntimeException("DB init failed", e);
