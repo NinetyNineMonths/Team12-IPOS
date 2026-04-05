@@ -10,6 +10,9 @@ import java.util.List;
 
 import main.service.AuthService;
 import main.model.User;
+import main.model.Campaign;
+import main.model.CampaignItem;
+import main.service.CampaignStore;
 import main.ui.WelcomeFrame;
 
 /**
@@ -117,10 +120,10 @@ public class IPOS_PU_GUI extends JFrame {
         catalogue.add(new Product("BAND005", "Bandages & Plasters Pack", 5.49, 30, "First Aid"));
 
         // Active promotions (example)
-        activePromotions.add(new Promotion("SPRING25", "Spring Health Boost", "01/04/2026", "30/04/2026",
-                List.of("PARA001", "VIT003"), 0.15)); // 15% off
-        activePromotions.add(new Promotion("PAINRELIEF", "Pain Relief Week", "20/03/2026", "27/03/2026",
-                List.of("IBU002", "ALL004"), 0.20)); // 20% off
+//        activePromotions.add(new Promotion("SPRING25", "Spring Health Boost", "01/04/2026", "30/04/2026",
+//                List.of("PARA001", "VIT003"), 0.15)); // 15% off
+//        activePromotions.add(new Promotion("PAINRELIEF", "Pain Relief Week", "20/03/2026", "27/03/2026",
+//                List.of("IBU002", "ALL004"), 0.20)); // 20% off
     }
 
     private void createHeader() {
@@ -288,13 +291,30 @@ public class IPOS_PU_GUI extends JFrame {
     }
 
     private double getEffectivePrice(Product product) {
-        for (Promotion prom : activePromotions) {
-            if (prom.items.contains(product.id)) {
-                return product.price * (1 - prom.discountRate);
+        double bestPrice = product.price;
+
+        for (Campaign campaign : CampaignStore.getActiveCampaigns()) {
+            for (CampaignItem item : campaign.getItems()) {
+                if (item.getItemId().equals(product.id)) {
+                    double discounted = product.price * (1 - item.getDiscountRate() / 100.0);
+                    if (discounted < bestPrice) {
+                        bestPrice = discounted;
+                    }
+                }
             }
         }
-        return product.price;
+
+        return bestPrice;
     }
+
+//    private double getEffectivePrice(Product product) {
+//        for (Promotion prom : activePromotions) {
+//            if (prom.items.contains(product.id)) {
+//                return product.price * (1 - prom.discountRate);
+//            }
+//        }
+//        return product.price;
+//    }
 
     private int getQuantityInCart(Product product) {
         CartItem item = findCartItem(product);
@@ -314,15 +334,35 @@ public class IPOS_PU_GUI extends JFrame {
 
         if (keyword.isEmpty()) {
             refreshProductTable(catalogue);
-            return;
+        } else {
+            List<Product> filtered = catalogue.stream()
+                    .filter(p -> p.name.toLowerCase().contains(keyword) || p.category.toLowerCase().contains(keyword))
+                    .toList();
+
+            refreshProductTable(filtered);
         }
 
-        List<Product> filtered = catalogue.stream()
-                .filter(p -> p.name.toLowerCase().contains(keyword) || p.category.toLowerCase().contains(keyword))
-                .toList();
-
-        refreshProductTable(filtered);
+        refreshPromotionsView();
     }
+
+//    private void refreshBrowseView() {
+//        if (productTableModel == null) {
+//            return;
+//        }
+//
+//        String keyword = (searchField == null) ? "" : searchField.getText().trim().toLowerCase();
+//
+//        if (keyword.isEmpty()) {
+//            refreshProductTable(catalogue);
+//            return;
+//        }
+//
+//        List<Product> filtered = catalogue.stream()
+//                .filter(p -> p.name.toLowerCase().contains(keyword) || p.category.toLowerCase().contains(keyword))
+//                .toList();
+//
+//        refreshProductTable(filtered);
+//    }
 
     private JPanel createPromotionsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
@@ -333,18 +373,63 @@ public class IPOS_PU_GUI extends JFrame {
         promoArea.setFont(new Font("Arial", Font.PLAIN, 14));
 
         StringBuilder sb = new StringBuilder("=== ACTIVE PROMOTIONS ===\n\n");
-        for (Promotion p : activePromotions) {
-            sb.append(p.name).append(" (").append(p.id).append(")\n");
-            sb.append("Valid: ").append(p.startDate).append(" – ").append(p.endDate).append("\n");
-            sb.append("Discount: ").append((int)(p.discountRate * 100)).append("% off on: ").append(p.items).append("\n\n");
+
+        List<Campaign> campaigns = CampaignStore.getActiveCampaigns();
+
+        if (campaigns.isEmpty()) {
+            sb.append("No active campaigns right now.");
+        } else {
+            for (Campaign c : campaigns) {
+                sb.append("Campaign ID: ").append(c.getCampaignId()).append("\n");
+                sb.append("Valid: ").append(c.getStartDateTime().toLocalDate())
+                        .append(" - ").append(c.getEndDateTime().toLocalDate()).append("\n");
+                sb.append("Type: ").append(c.getDiscountType()).append("\n");
+                sb.append("Items:\n");
+
+                for (CampaignItem item : c.getItems()) {
+                    sb.append(" - ").append(item.getItemId())
+                            .append(" : ").append(item.getDiscountRate()).append("% off\n");
+                }
+
+                sb.append("\n");
+            }
         }
+
         promoArea.setText(sb.toString());
 
-        panel.add(new JLabel("Current Promotions (click any to browse discounted items)"), BorderLayout.NORTH);
+        panel.add(new JLabel("Current Promotions"), BorderLayout.NORTH);
         panel.add(new JScrollPane(promoArea), BorderLayout.CENTER);
 
         return panel;
     }
+
+    private void refreshPromotionsView() {
+        if (mainTabs != null) {
+            mainTabs.setComponentAt(1, createPromotionsPanel());
+        }
+    }
+
+//    private JPanel createPromotionsPanel() {
+//        JPanel panel = new JPanel(new BorderLayout());
+//        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+//
+//        JTextArea promoArea = new JTextArea();
+//        promoArea.setEditable(false);
+//        promoArea.setFont(new Font("Arial", Font.PLAIN, 14));
+//
+//        StringBuilder sb = new StringBuilder("=== ACTIVE PROMOTIONS ===\n\n");
+//        for (Promotion p : activePromotions) {
+//            sb.append(p.name).append(" (").append(p.id).append(")\n");
+//            sb.append("Valid: ").append(p.startDate).append(" – ").append(p.endDate).append("\n");
+//            sb.append("Discount: ").append((int)(p.discountRate * 100)).append("% off on: ").append(p.items).append("\n\n");
+//        }
+//        promoArea.setText(sb.toString());
+//
+//        panel.add(new JLabel("Current Promotions (click any to browse discounted items)"), BorderLayout.NORTH);
+//        panel.add(new JScrollPane(promoArea), BorderLayout.CENTER);
+//
+//        return panel;
+//    }
 
     private JPanel createCartPanel() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
