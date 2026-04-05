@@ -19,13 +19,6 @@ import java.time.LocalDate;
  *
  * JUnit 5 tests for ReportService, based on the interface test plan:
  *
- *   PU-RPT-01: Valid sales report generation
- *   PU-RPT-02: Invalid date range rejected for sales report
- *   PU-RPT-03: Valid campaigns report generation
- *   PU-RPT-04: Campaigns report returns empty when no campaigns exist
- *
- * Uses an in-memory SQLite database so no real database is needed to run tests.
- * Each test gets a fresh database via @BeforeEach.
  */
 public class ReportServiceTest {
 
@@ -188,8 +181,7 @@ public class ReportServiceTest {
      * Creates the minimum database tables needed for ReportService to run,
      * and inserts sample data matching what the SQL queries expect.
      *
-     * TODO: Update table and column names here to match your team's
-     * final database schema when it is agreed upon.
+     * TODO: Update table and column names here to match the database schema when it is agreed upon.
      */
     private void createTablesAndSeedData() throws SQLException {
         try (Statement stmt = connection.createStatement()) {
