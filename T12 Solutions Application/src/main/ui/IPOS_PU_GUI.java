@@ -7,6 +7,8 @@ import java.awt.event.ActionEvent;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 import main.service.AuthService;
 import main.model.User;
@@ -14,6 +16,9 @@ import main.model.Campaign;
 import main.model.CampaignItem;
 import main.service.CampaignStore;
 import main.ui.WelcomeFrame;
+import main.db.DatabaseManager;
+import main.service.ReportService;
+
 
 /**
  * IPOS-PU Desktop GUI Prototype
@@ -40,6 +45,7 @@ public class IPOS_PU_GUI extends JFrame {
     private AuthService authService;
     private User currentUser;
     private JButton loginBtn;
+    private ReportService reportService;
 
     public IPOS_PU_GUI() {
         this(new AuthService(), null);
@@ -704,6 +710,15 @@ public class IPOS_PU_GUI extends JFrame {
 
     // ==================== MAIN ====================
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(IPOS_PU_GUI::new);
-    }
+        SwingUtilities.invokeLater(() -> {
+            try {
+                DatabaseManager.initialise();
+                Connection conn = DatabaseManager.getConnection();
+                IPOS_PU_GUI gui = new IPOS_PU_GUI();
+                gui.reportService = new ReportService(conn);
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(null, "Database connection failed: " + e.getMessage());
+            }
+        });
+    }    
 }
