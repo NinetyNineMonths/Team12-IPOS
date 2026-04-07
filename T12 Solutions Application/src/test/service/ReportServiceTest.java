@@ -1,7 +1,7 @@
 package test.service;
 
 import main.model.SalesReport;
-import main.model.AdvertisingCampaignsReport;
+import main.model.CampaignsReport;
 import main.service.ReportService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -94,7 +94,7 @@ public class ReportServiceTest {
         LocalDate start = LocalDate.of(2025, 1, 1);
         LocalDate end   = LocalDate.of(2025, 12, 31);
 
-        AdvertisingCampaignsReport report = reportService.generateAdvertisingCampaignsReport(start, end);
+        CampaignsReport report = reportService.generateCampaignsReport(start, end);
 
         // Report should not be null
         assertNotNull(report, "Report should not be null");
@@ -117,7 +117,7 @@ public class ReportServiceTest {
         LocalDate end   = LocalDate.of(2025, 1, 1);
 
         assertThrows(IllegalArgumentException.class, () -> {
-            reportService.generateAdvertisingCampaignsReport(start, end);
+            reportService.generateCampaignsReport(start, end);
         }, "Should throw IllegalArgumentException when startDate is after endDate");
     }
 
@@ -131,7 +131,7 @@ public class ReportServiceTest {
         LocalDate start = LocalDate.of(2099, 1, 1);
         LocalDate end   = LocalDate.of(2099, 12, 31);
 
-        AdvertisingCampaignsReport report = reportService.generateAdvertisingCampaignsReport(start, end);
+        CampaignsReport report = reportService.generateCampaignsReport(start, end);
 
         assertNotNull(report, "Report should not be null even if empty");
         assertTrue(report.isEmpty(), "Report should be empty when no campaigns exist in period");
