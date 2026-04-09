@@ -2,7 +2,7 @@ package main.ui;
 
 import main.model.User;
 import main.service.AuthService;
-import main.*;
+//import main.*;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;

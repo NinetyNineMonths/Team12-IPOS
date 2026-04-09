@@ -23,7 +23,7 @@ public class ReportServiceTest {
 
     /*
      * SETUP
-     * 
+     *
      * Creates a fresh in-memory SQLite database before each test and sets up
      * the tables and sample data needed for the tests to run.
      *

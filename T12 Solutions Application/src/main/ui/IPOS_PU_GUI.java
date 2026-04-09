@@ -62,7 +62,7 @@ public class IPOS_PU_GUI extends JFrame {
         this.currentUser = user;
 
         if (currentUser != null) {
-            completedOrderCount = 0;
+            loadOrdersFromDatabase();
         }
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -469,7 +469,10 @@ public class IPOS_PU_GUI extends JFrame {
         double finalTotal = calculateCartTotalWithMemberDiscount();
 
         String orderId = "ORD-" + System.currentTimeMillis();
-        myOrders.add(new Order(orderId, new ArrayList<>(shoppingCart), LocalDateTime.now(), "Received"));
+        Order newOrder = new Order(orderId, new ArrayList<>(shoppingCart), LocalDateTime.now(), "Received");
+        myOrders.add(newOrder);
+
+        saveOrderToDatabase(orderId, finalTotal);
 
         completedOrderCount++;
 
@@ -493,6 +496,44 @@ public class IPOS_PU_GUI extends JFrame {
         refreshOrdersTable();
         mainTabs.setSelectedIndex(3);
     }
+
+//    private void simulateCheckout() {
+//        if (shoppingCart.isEmpty()) {
+//            JOptionPane.showMessageDialog(this, "Cart is empty!");
+//            return;
+//        }
+//
+//        String card = JOptionPane.showInputDialog(this, "Enter card number (demo):", "4242 4242 4242 4242");
+//        if (card == null || card.length() < 4) return;
+//
+//        boolean tenthDiscountApplied = qualifiesForTenthOrderDiscount();
+//        double finalTotal = calculateCartTotalWithMemberDiscount();
+//
+//        String orderId = "ORD-" + System.currentTimeMillis();
+//        myOrders.add(new Order(orderId, new ArrayList<>(shoppingCart), LocalDateTime.now(), "Received"));
+//
+//        completedOrderCount++;
+//
+//        if (tenthDiscountApplied) {
+//            JOptionPane.showMessageDialog(this,
+//                    "Payment successful!\nOrder ID: " + orderId +
+//                            "\nA 10% member discount was applied.\n" +
+//                            "Final total: £" + String.format("%.2f", finalTotal) +
+//                            "\nConfirmation emailed.");
+//        } else {
+//            JOptionPane.showMessageDialog(this,
+//                    "Payment successful!\nOrder ID: " + orderId +
+//                            "\nFinal total: £" + String.format("%.2f", finalTotal) +
+//                            "\nConfirmation emailed.");
+//        }
+//
+//        shoppingCart.clear();
+//        refreshCartTable();
+//        updateCartButton();
+//        refreshBrowseView();
+//        refreshOrdersTable();
+//        mainTabs.setSelectedIndex(3);
+//    }
 
     private JPanel createOrdersPanel() {
         JPanel panel = new JPanel(new BorderLayout());
@@ -651,6 +692,112 @@ public class IPOS_PU_GUI extends JFrame {
             total += item.quantity;
         }
         return total;
+    }
+
+    private void loadOrdersFromDatabase() {
+        myOrders.clear();
+        completedOrderCount = 0;
+
+        if (currentUser == null) {
+            return;
+        }
+
+        String sql = """
+        SELECT order_id, order_date, item_count, status
+        FROM orders
+        WHERE user_email = ?
+        ORDER BY order_date DESC
+    """;
+
+        try (Connection conn = DatabaseManager.getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, currentUser.getEmail());
+
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String orderId = rs.getString("order_id");
+                    LocalDateTime date = LocalDateTime.parse(rs.getString("order_date"));
+                    String status = rs.getString("status");
+                    int itemCount = rs.getInt("item_count");
+
+                    List<CartItem> placeholderItems = new ArrayList<>();
+                    for (int i = 0; i < itemCount; i++) {
+                        placeholderItems.add(new CartItem(
+                                new Product("N/A", "Previously purchased item", 0.0, 0, "Stored"),
+                                1
+                        ));
+                    }
+
+                    myOrders.add(new Order(orderId, placeholderItems, date, status));
+                    completedOrderCount++;
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveOrderToDatabase(String orderId, double finalTotal) {
+        if (currentUser == null) {
+            return;
+        }
+
+        String insertOrder = """
+        INSERT INTO orders (order_id, user_email, order_date, item_count, status, total_amount)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """;
+
+        String insertItem = """
+        INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, line_total)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """;
+
+        try (Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (java.sql.PreparedStatement orderStmt = conn.prepareStatement(insertOrder);
+                 java.sql.PreparedStatement itemStmt = conn.prepareStatement(insertItem)) {
+
+                orderStmt.setString(1, orderId);
+                orderStmt.setString(2, currentUser.getEmail());
+                orderStmt.setString(3, LocalDateTime.now().toString());
+                orderStmt.setInt(4, shoppingCart.size());
+                orderStmt.setString(5, "Received");
+                orderStmt.setDouble(6, finalTotal);
+                orderStmt.executeUpdate();
+
+                for (CartItem item : shoppingCart) {
+                    double unitPrice = getEffectivePrice(item.product);
+                    double lineTotal = unitPrice * item.quantity;
+
+                    itemStmt.setString(1, orderId);
+                    itemStmt.setString(2, item.product.id);
+                    itemStmt.setString(3, item.product.name);
+                    itemStmt.setInt(4, item.quantity);
+                    itemStmt.setDouble(5, unitPrice);
+                    itemStmt.setDouble(6, lineTotal);
+                    itemStmt.addBatch();
+                }
+
+                itemStmt.executeBatch();
+                conn.commit();
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "Failed to save order to database.",
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     // ==================== Simple Model Classes ====================

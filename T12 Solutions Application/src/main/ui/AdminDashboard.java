@@ -8,10 +8,13 @@ import main.service.CampaignStore;
 import javax.swing.*;
 import java.awt.*;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
 
 public class AdminDashboard extends JFrame {
 
@@ -216,6 +219,7 @@ public class AdminDashboard extends JFrame {
                 );
 
                 CampaignStore.addCampaign(campaign);
+                saveCampaignToDatabase(campaign);
 
                 JOptionPane.showMessageDialog(this,
                         "Campaign created:\n" + campaign.getCampaignId());
@@ -318,11 +322,13 @@ public class AdminDashboard extends JFrame {
         }
 
         c.cancel();
+        markCampaignCancelledInDatabase(c.getCampaignId());
 
         JOptionPane.showMessageDialog(this,
                 "Campaign terminated early:\n" + c.getCampaignId());
 
         viewCampaigns();
+
     }
 
     private void deleteCampaign() {
@@ -341,6 +347,8 @@ public class AdminDashboard extends JFrame {
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
+
+        deleteCampaignFromDatabase(id.trim());
 
         JOptionPane.showMessageDialog(this,
                 "Campaign deleted: " + id.trim());
@@ -441,15 +449,17 @@ public class AdminDashboard extends JFrame {
                         end,
                         discountType,
                         items,
-                        false
+                        existing.isCancelled()
                 );
 
                 CampaignStore.addCampaign(updated);
+                updateCampaignInDatabase(updated);
 
                 JOptionPane.showMessageDialog(this,
                         "Campaign updated: " + updated.getCampaignId());
 
                 viewCampaigns();
+
 
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this,
@@ -511,6 +521,168 @@ public class AdminDashboard extends JFrame {
 
         } catch (Exception e) {
             outputArea.setText("Error:\n" + e.getMessage());
+        }
+    }
+
+    private void saveCampaignToDatabase(Campaign campaign) {
+        String insertCampaign = """
+            INSERT INTO campaigns (campaign_id, start_date, end_date, discount_type, cancelled)
+            VALUES (?, ?, ?, ?, ?)
+        """;
+
+        String insertCampaignItem = """
+            INSERT INTO campaign_items (campaign_id, item_id, discount_rate)
+            VALUES (?, ?, ?)
+        """;
+
+        try (Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement campaignStmt = conn.prepareStatement(insertCampaign);
+                 PreparedStatement itemStmt = conn.prepareStatement(insertCampaignItem)) {
+
+                campaignStmt.setString(1, campaign.getCampaignId());
+                campaignStmt.setString(2, campaign.getStartDateTime().toLocalDate().toString());
+                campaignStmt.setString(3, campaign.getEndDateTime().toLocalDate().toString());
+                campaignStmt.setString(4, campaign.getDiscountType());
+                campaignStmt.setInt(5, campaign.isCancelled() ? 1 : 0);
+                campaignStmt.executeUpdate();
+
+                for (CampaignItem item : campaign.getItems()) {
+                    itemStmt.setString(1, campaign.getCampaignId());
+                    itemStmt.setString(2, item.getItemId());
+                    itemStmt.setDouble(3, item.getDiscountRate());
+                    itemStmt.addBatch();
+                }
+
+                itemStmt.executeBatch();
+                conn.commit();
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to save campaign to database:\n" + e.getMessage(),
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void updateCampaignInDatabase(Campaign campaign) {
+        String updateCampaign = """
+            UPDATE campaigns
+            SET start_date = ?, end_date = ?, discount_type = ?, cancelled = ?
+            WHERE campaign_id = ?
+        """;
+
+        String deleteItems = """
+            DELETE FROM campaign_items
+            WHERE campaign_id = ?
+        """;
+
+        String insertCampaignItem = """
+            INSERT INTO campaign_items (campaign_id, item_id, discount_rate)
+            VALUES (?, ?, ?)
+        """;
+
+        try (Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement campaignStmt = conn.prepareStatement(updateCampaign);
+                 PreparedStatement deleteStmt = conn.prepareStatement(deleteItems);
+                 PreparedStatement itemStmt = conn.prepareStatement(insertCampaignItem)) {
+
+                campaignStmt.setString(1, campaign.getStartDateTime().toLocalDate().toString());
+                campaignStmt.setString(2, campaign.getEndDateTime().toLocalDate().toString());
+                campaignStmt.setString(3, campaign.getDiscountType());
+                campaignStmt.setInt(4, campaign.isCancelled() ? 1 : 0);
+                campaignStmt.setString(5, campaign.getCampaignId());
+                campaignStmt.executeUpdate();
+
+                deleteStmt.setString(1, campaign.getCampaignId());
+                deleteStmt.executeUpdate();
+
+                for (CampaignItem item : campaign.getItems()) {
+                    itemStmt.setString(1, campaign.getCampaignId());
+                    itemStmt.setString(2, item.getItemId());
+                    itemStmt.setDouble(3, item.getDiscountRate());
+                    itemStmt.addBatch();
+                }
+
+                itemStmt.executeBatch();
+                conn.commit();
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to update campaign in database:\n" + e.getMessage(),
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void markCampaignCancelledInDatabase(String campaignId) {
+        String sql = """
+            UPDATE campaigns
+            SET cancelled = 1
+            WHERE campaign_id = ?
+        """;
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, campaignId);
+            ps.executeUpdate();
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to cancel campaign in database:\n" + e.getMessage(),
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void deleteCampaignFromDatabase(String campaignId) {
+        String deleteItems = "DELETE FROM campaign_items WHERE campaign_id = ?";
+        String deleteCampaign = "DELETE FROM campaigns WHERE campaign_id = ?";
+
+        try (Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement itemStmt = conn.prepareStatement(deleteItems);
+                 PreparedStatement campaignStmt = conn.prepareStatement(deleteCampaign)) {
+
+                itemStmt.setString(1, campaignId);
+                itemStmt.executeUpdate();
+
+                campaignStmt.setString(1, campaignId);
+                campaignStmt.executeUpdate();
+
+                conn.commit();
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to delete campaign from database:\n" + e.getMessage(),
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 }
