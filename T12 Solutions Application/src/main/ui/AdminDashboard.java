@@ -85,17 +85,6 @@ public class AdminDashboard extends JFrame {
         outputArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
         add(new JScrollPane(outputArea), BorderLayout.CENTER);
 
-         JButton printBtn = new JButton("Print ");
-        styleButton(printBtn);
-        topPanel.add(printBtn);
-        printBtn.addActionListener(e -> {
-            try {
-                outputArea.print();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Print failed: " + ex.getMessage());
-            }
-        });
-
         salesBtn.addActionListener(e -> generateSalesReport());
         campaignBtn.addActionListener(e -> generateCampaignReport());
         createCampaignBtn.addActionListener(e -> openCreateCampaignDialog());
