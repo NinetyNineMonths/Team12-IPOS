@@ -1,4 +1,4 @@
-package test.service;
+package test;
 
 import main.model.SalesReport;
 import main.model.CampaignsReport;
