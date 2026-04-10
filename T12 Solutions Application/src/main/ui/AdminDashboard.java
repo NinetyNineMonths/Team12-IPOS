@@ -4,6 +4,7 @@ import main.service.ReportService;
 import main.db.DatabaseManager;
 import main.model.*;
 import main.service.CampaignStore;
+import main.service.PromotionService;
 
 import javax.swing.*;
 import java.awt.*;
@@ -31,6 +32,7 @@ public class AdminDashboard extends JFrame {
         try {
             Connection conn = DatabaseManager.getConnection();
             reportService = new ReportService(conn);
+            CampaignStore.loadFromDatabase(new PromotionService());
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Database connection failed");
             return;
@@ -535,15 +537,27 @@ public class AdminDashboard extends JFrame {
             VALUES (?, ?, ?)
         """;
 
+        String insertCampaignMetrics = """
+            INSERT INTO campaign_metrics (campaign_id, campaign_hits)
+            VALUES (?, 0)
+        """;
+
+        String insertCampaignItemMetrics = """
+            INSERT INTO campaign_item_metrics (campaign_id, item_id, item_hits, item_purchases)
+            VALUES (?, ?, 0, 0)
+        """;
+
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
 
             try (PreparedStatement campaignStmt = conn.prepareStatement(insertCampaign);
-                 PreparedStatement itemStmt = conn.prepareStatement(insertCampaignItem)) {
+                 PreparedStatement itemStmt = conn.prepareStatement(insertCampaignItem);
+                 PreparedStatement campaignMetricsStmt = conn.prepareStatement(insertCampaignMetrics);
+                 PreparedStatement itemMetricsStmt = conn.prepareStatement(insertCampaignItemMetrics)) {
 
                 campaignStmt.setString(1, campaign.getCampaignId());
-                campaignStmt.setString(2, campaign.getStartDateTime().toLocalDate().toString());
-                campaignStmt.setString(3, campaign.getEndDateTime().toLocalDate().toString());
+                campaignStmt.setString(2, campaign.getStartDateTime().toString());
+                campaignStmt.setString(3, campaign.getEndDateTime().toString());
                 campaignStmt.setString(4, campaign.getDiscountType());
                 campaignStmt.setInt(5, campaign.isCancelled() ? 1 : 0);
                 campaignStmt.executeUpdate();
@@ -556,6 +570,18 @@ public class AdminDashboard extends JFrame {
                 }
 
                 itemStmt.executeBatch();
+
+                campaignMetricsStmt.setString(1, campaign.getCampaignId());
+                campaignMetricsStmt.executeUpdate();
+
+                for (CampaignItem item : campaign.getItems()) {
+                    itemMetricsStmt.setString(1, campaign.getCampaignId());
+                    itemMetricsStmt.setString(2, item.getItemId());
+                    itemMetricsStmt.addBatch();
+                }
+
+                itemMetricsStmt.executeBatch();
+
                 conn.commit();
 
             } catch (SQLException e) {
@@ -597,8 +623,8 @@ public class AdminDashboard extends JFrame {
                  PreparedStatement deleteStmt = conn.prepareStatement(deleteItems);
                  PreparedStatement itemStmt = conn.prepareStatement(insertCampaignItem)) {
 
-                campaignStmt.setString(1, campaign.getStartDateTime().toLocalDate().toString());
-                campaignStmt.setString(2, campaign.getEndDateTime().toLocalDate().toString());
+                campaignStmt.setString(1, campaign.getStartDateTime().toString());
+                campaignStmt.setString(2, campaign.getEndDateTime().toString());
                 campaignStmt.setString(3, campaign.getDiscountType());
                 campaignStmt.setInt(4, campaign.isCancelled() ? 1 : 0);
                 campaignStmt.setString(5, campaign.getCampaignId());

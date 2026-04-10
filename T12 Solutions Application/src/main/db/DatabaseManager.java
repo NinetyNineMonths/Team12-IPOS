@@ -41,11 +41,32 @@ public class DatabaseManager {
             );
         """;
 
+        String campaignMetricsTable = """
+            CREATE TABLE IF NOT EXISTS campaign_metrics (
+                campaign_id    TEXT    PRIMARY KEY,
+                campaign_hits  INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id)
+            );
+        """;
+
+        String campaignItemMetricsTable = """
+            CREATE TABLE IF NOT EXISTS campaign_item_metrics (
+                campaign_id      TEXT    NOT NULL,
+                item_id          TEXT    NOT NULL,
+                item_hits        INTEGER NOT NULL DEFAULT 0,
+                item_purchases   INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (campaign_id, item_id),
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id)
+            );
+        """;
+
         String productsTable = """
             CREATE TABLE IF NOT EXISTS products (
                 product_id    TEXT    PRIMARY KEY,
                 product_name  TEXT    NOT NULL,
-                unit_price    REAL    NOT NULL
+                category      TEXT    NOT NULL,
+                price         REAL    NOT NULL,
+                stock         INTEGER NOT NULL
             );
         """;
 
@@ -69,9 +90,28 @@ public class DatabaseManager {
                 quantity      INTEGER NOT NULL,
                 unit_price    REAL    NOT NULL,
                 line_total    REAL    NOT NULL,
-                PRIMARY KEY (order_id, product_id),
+                campaign_id   TEXT,
                 FOREIGN KEY (order_id) REFERENCES orders(order_id)
             );
+        """;
+
+        String commercialApplicationsTable = """
+            CREATE TABLE IF NOT EXISTS commercial_applications (
+                    application_id               TEXT    PRIMARY KEY,
+                    company_name                 TEXT    NOT NULL,
+                    business_type                TEXT    NOT NULL,
+                    address_line_1               TEXT    NOT NULL,
+                    address_line_2               TEXT,
+                    city                         TEXT    NOT NULL,
+                    postcode                     TEXT    NOT NULL,
+                    company_house_registration   TEXT    NOT NULL,
+                    director_name                TEXT    NOT NULL,
+                    director_contact             TEXT    NOT NULL,
+                    email                        TEXT    NOT NULL,
+                    notification_method          TEXT    NOT NULL,
+                    status                       TEXT    NOT NULL DEFAULT 'PENDING',
+                    submitted_at                 TEXT    NOT NULL
+                );
         """;
 
         try (Connection conn = getConnection();
@@ -79,10 +119,14 @@ public class DatabaseManager {
             stmt.execute(usersTable);
             stmt.execute(campaignsTable);
             stmt.execute(campaignItemsTable);
+            stmt.execute(campaignMetricsTable);
+            stmt.execute(campaignItemMetricsTable);
             stmt.execute(productsTable);
             stmt.execute(ordersTable);
             stmt.execute(orderItemsTable);
+            stmt.execute(commercialApplicationsTable);
             seedUsersIfEmpty(conn);
+            seedProductsIfEmpty(conn);
         } catch (SQLException e) {
             throw new RuntimeException("DB init failed", e);
         }
@@ -100,73 +144,20 @@ public class DatabaseManager {
             }
         }
     }
+
+    private static void seedProductsIfEmpty(Connection conn) throws SQLException {
+        try (ResultSet rs = conn.createStatement()
+                .executeQuery("SELECT COUNT(*) FROM products")) {
+            if (rs.getInt(1) == 0) {
+                conn.createStatement().execute("""
+                INSERT INTO products (product_id, product_name, category, price, stock) VALUES
+                ('PARA001', 'Paracetamol 500mg (16 tablets)', 'Pain relief', 2.99, 120),
+                ('IBU002', 'Ibuprofen 400mg (24 tablets)', 'Anti-inflammatory', 4.49, 85),
+                ('VIT003', 'Vitamin D3 1000IU (90 capsules)', 'Supplements', 6.99, 200),
+                ('ALL004', 'Allergy Relief (Cetirizine 10mg)', 'Antihistamine', 3.79, 45),
+                ('BAND005', 'Bandages & Plasters Pack', 'First Aid', 5.49, 30)
+            """);
+            }
+        }
+    }
 }
-
-
-//package main.db;
-//
-//import java.sql.*;
-//
-//public class DatabaseManager {
-//
-//    private static final String DB_URL = "jdbc:sqlite:ipos_pu.db";
-//
-//    public static Connection getConnection() throws SQLException {
-//        return DriverManager.getConnection(DB_URL);
-//    }
-//
-//    public static void initialise() {
-//        String usersTable = """
-//            CREATE TABLE IF NOT EXISTS users (
-//                email       TEXT    PRIMARY KEY,
-//                full_name   TEXT    NOT NULL,
-//                password    TEXT    NOT NULL,
-//                role        TEXT    NOT NULL DEFAULT 'CUSTOMER',
-//                first_login INTEGER NOT NULL DEFAULT 1
-//            );
-//        """;
-//
-//        String campaignsTable = """
-//            CREATE TABLE IF NOT EXISTS campaigns (
-//                campaign_id   TEXT    PRIMARY KEY,
-//                start_date    TEXT    NOT NULL,
-//                end_date      TEXT    NOT NULL,
-//                discount_type TEXT    NOT NULL,
-//                cancelled     INTEGER NOT NULL DEFAULT 0
-//            );
-//        """;
-//
-//        String campaignItemsTable = """
-//            CREATE TABLE IF NOT EXISTS campaign_items (
-//                campaign_id   TEXT    NOT NULL,
-//                item_id       TEXT    NOT NULL,
-//                discount_rate REAL    NOT NULL,
-//                PRIMARY KEY (campaign_id, item_id),
-//                FOREIGN KEY (campaign_id) REFERENCES campaigns(campaign_id)
-//            );
-//        """;
-//
-//        try (Connection conn = getConnection();
-//             Statement stmt = conn.createStatement()) {
-//            stmt.execute(usersTable);
-//            stmt.execute(campaignsTable);
-//            stmt.execute(campaignItemsTable);
-//            seedUsersIfEmpty(conn);
-//        } catch (SQLException e) {
-//            throw new RuntimeException("DB init failed", e);
-//        }
-//    }
-//
-//    private static void seedUsersIfEmpty(Connection conn) throws SQLException {
-//        try (ResultSet rs = conn.createStatement()
-//                .executeQuery("SELECT COUNT(*) FROM users")) {
-//            if (rs.getInt(1) == 0) {
-//                conn.createStatement().execute("""
-//                    INSERT INTO users VALUES
-//                    ('customer@ipos.com', 'Test Customer', 'Test123!', 'CUSTOMER', 1),
-//                    ('admin@ipos.com',    'System Admin',  'Admin123!', 'ADMIN',   0)
-//                """);
-//            }
-//        }
-//    }
-//}

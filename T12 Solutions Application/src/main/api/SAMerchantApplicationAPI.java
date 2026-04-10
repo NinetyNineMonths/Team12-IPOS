@@ -1,4 +1,4 @@
 package main.api;
 
-public class SAMerchantApplicationAPI {
+public interface SAMerchantApplicationAPI {
 }
