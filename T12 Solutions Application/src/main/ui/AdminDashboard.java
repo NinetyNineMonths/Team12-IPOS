@@ -51,6 +51,7 @@ public class AdminDashboard extends JFrame {
         JButton engagementBtn = new JButton("Campaign Engagement");
         JButton viewDbBtn = new JButton("View Users DB");
         JButton logoutBtn = new JButton("Logout");
+        JButton printButton = new JButton("Print Report");
 
         styleButton(salesBtn);
         styleButton(campaignBtn);
@@ -62,6 +63,7 @@ public class AdminDashboard extends JFrame {
         styleButton(engagementBtn);
         styleButton(viewDbBtn);
         styleButton(logoutBtn);
+        styleButton(printButton);
 
         topPanel.add(salesBtn);
         topPanel.add(campaignBtn);
@@ -73,6 +75,7 @@ public class AdminDashboard extends JFrame {
         topPanel.add(engagementBtn);
         topPanel.add(viewDbBtn);
         topPanel.add(logoutBtn);
+        topPanel.add(printButton);
 
         topPanel.setPreferredSize(new Dimension(900, 70));
         add(topPanel, BorderLayout.NORTH);
@@ -94,6 +97,17 @@ public class AdminDashboard extends JFrame {
         logoutBtn.addActionListener(e -> {
             new IPOS_PU_GUI().setVisible(true);
             dispose();
+        });
+        printButton.addActionListener(e -> {
+            try {
+                boolean printed = outputArea.print();
+
+                if (!printed) {
+                    JOptionPane.showMessageDialog(this, "Printing cancelled.");
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error printing: " + ex.getMessage());
+            }
         });
     }
 
