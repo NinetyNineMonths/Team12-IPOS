@@ -72,9 +72,9 @@ public class ReportServiceTest {
         LocalDate end   = LocalDate.of(2025, 1, 1); // end before start
 
         // Should throw IllegalArgumentException since start > end
-        assertThrows(IllegalArgumentException.class, () -> {
-            reportService.generateSalesReport(start, end);
-        }, "Should throw IllegalArgumentException when startDate is after endDate");
+        assertThrows(IllegalArgumentException.class,
+                () -> reportService.generateSalesReport(start, end),
+                "Should throw IllegalArgumentException when startDate is after endDate");
     }
 
     /**
@@ -84,9 +84,9 @@ public class ReportServiceTest {
     // Expected: throws IllegalArgumentException when both dates are null.
     @Test
     void testGenerateSalesReport_NullDates_ThrowsException() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            reportService.generateSalesReport(null, null);
-        }, "Should throw IllegalArgumentException when dates are null");
+        assertThrows(IllegalArgumentException.class,
+                () -> reportService.generateSalesReport(null, null),
+                "Should throw IllegalArgumentException when dates are null");
     }
 
     /*
@@ -121,9 +121,9 @@ public class ReportServiceTest {
         LocalDate start = LocalDate.of(2025, 12, 31);
         LocalDate end   = LocalDate.of(2025, 1, 1);
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            reportService.generateCampaignsReport(start, end);
-        }, "Should throw IllegalArgumentException when startDate is after endDate");
+        assertThrows(IllegalArgumentException.class,
+                () -> reportService.generateCampaignsReport(start, end),
+                "Should throw IllegalArgumentException when startDate is after endDate");
     }
 
     /*
@@ -143,7 +143,6 @@ public class ReportServiceTest {
         assertTrue(report.isEmpty(), "Report should be empty when no campaigns exist in period");
         assertEquals(0, report.getActiveCampaignCount(), "Active campaign count should be 0");
     }
-
 
     /**
      * Helpers - Creates the minimum database tables needed for ReportService to run,
@@ -203,27 +202,32 @@ public class ReportServiceTest {
                 )
             """);
 
+            //noinspection SqlResolve
             stmt.execute("""
                 INSERT INTO users VALUES
                 ('customer@ipos.com', 'Test Customer', 'Test123!', 'CUSTOMER', 1)
             """);
 
+            //noinspection SqlResolve
             stmt.execute("""
                 INSERT INTO orders VALUES
                 ('ORD001', 'customer@ipos.com', '2025-05-15', 2, 'Received', 75.00)
             """);
 
+            //noinspection SqlResolve
             stmt.execute("""
                 INSERT INTO order_items VALUES
                 ('ORD001', '100 00001', 'Paracetamol', 250, 0.10, 25.00),
                 ('ORD001', '100 00002', 'Aspirin',     100, 0.50, 50.00)
             """);
 
+            //noinspection SqlResolve
             stmt.execute("""
                 INSERT INTO campaigns VALUES
                 ('Camp 05', '2025-03-01', '2025-03-31', 'FIXED', 0)
             """);
 
+            //noinspection SqlResolve
             stmt.execute("""
                 INSERT INTO campaign_items VALUES
                 ('Camp 05', '100 00002', 5.0)
