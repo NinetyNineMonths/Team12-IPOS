@@ -18,6 +18,7 @@ import main.service.CampaignStore;
 import main.ui.WelcomeFrame;
 import main.db.DatabaseManager;
 import main.service.ReportService;
+import main.service.PromotionService;
 
 
 /**
@@ -33,6 +34,7 @@ public class IPOS_PU_GUI extends JFrame {
     private final List<Promotion> activePromotions = new ArrayList<>();
     private final List<CartItem> shoppingCart = new ArrayList<>();
     private final List<Order> myOrders = new ArrayList<>();
+    private final PromotionService promotionService = new PromotionService();
 
     private JTable productTable;
     private JTable cartTable;
@@ -250,12 +252,20 @@ public class IPOS_PU_GUI extends JFrame {
                 shoppingCart.add(new CartItem(product, qtyToAdd));
             }
 
+            List<Campaign> matchingCampaigns = getActiveCampaignsForProduct(product.id);
+            for (Campaign campaign : matchingCampaigns) {
+                campaign.incrementCampaignHits();
+                promotionService.incrementCampaignHits(campaign.getCampaignId());
+
+                campaign.incrementItemHits(product.id, qtyToAdd);
+                promotionService.incrementItemHits(campaign.getCampaignId(), product.id, qtyToAdd);
+            }
+
             refreshCartTable();
             updateCartButton();
             refreshBrowseView();
 
             JOptionPane.showMessageDialog(this, qtyToAdd + " × " + product.name + " added to cart!");
-
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Invalid quantity. Please enter a whole number.");
         }
@@ -474,6 +484,18 @@ public class IPOS_PU_GUI extends JFrame {
 
         saveOrderToDatabase(orderId, finalTotal);
 
+        for (CartItem cartItem : shoppingCart) {
+            List<Campaign> matchingCampaigns = getActiveCampaignsForProduct(cartItem.product.id);
+            for (Campaign campaign : matchingCampaigns) {
+                campaign.incrementItemPurchases(cartItem.product.id, cartItem.quantity);
+                promotionService.incrementItemPurchases(
+                        campaign.getCampaignId(),
+                        cartItem.product.id,
+                        cartItem.quantity
+                );
+            }
+        }
+
         completedOrderCount++;
 
         if (tenthDiscountApplied) {
@@ -496,44 +518,6 @@ public class IPOS_PU_GUI extends JFrame {
         refreshOrdersTable();
         mainTabs.setSelectedIndex(3);
     }
-
-//    private void simulateCheckout() {
-//        if (shoppingCart.isEmpty()) {
-//            JOptionPane.showMessageDialog(this, "Cart is empty!");
-//            return;
-//        }
-//
-//        String card = JOptionPane.showInputDialog(this, "Enter card number (demo):", "4242 4242 4242 4242");
-//        if (card == null || card.length() < 4) return;
-//
-//        boolean tenthDiscountApplied = qualifiesForTenthOrderDiscount();
-//        double finalTotal = calculateCartTotalWithMemberDiscount();
-//
-//        String orderId = "ORD-" + System.currentTimeMillis();
-//        myOrders.add(new Order(orderId, new ArrayList<>(shoppingCart), LocalDateTime.now(), "Received"));
-//
-//        completedOrderCount++;
-//
-//        if (tenthDiscountApplied) {
-//            JOptionPane.showMessageDialog(this,
-//                    "Payment successful!\nOrder ID: " + orderId +
-//                            "\nA 10% member discount was applied.\n" +
-//                            "Final total: £" + String.format("%.2f", finalTotal) +
-//                            "\nConfirmation emailed.");
-//        } else {
-//            JOptionPane.showMessageDialog(this,
-//                    "Payment successful!\nOrder ID: " + orderId +
-//                            "\nFinal total: £" + String.format("%.2f", finalTotal) +
-//                            "\nConfirmation emailed.");
-//        }
-//
-//        shoppingCart.clear();
-//        refreshCartTable();
-//        updateCartButton();
-//        refreshBrowseView();
-//        refreshOrdersTable();
-//        mainTabs.setSelectedIndex(3);
-//    }
 
     private JPanel createOrdersPanel() {
         JPanel panel = new JPanel(new BorderLayout());
@@ -703,11 +687,11 @@ public class IPOS_PU_GUI extends JFrame {
         }
 
         String sql = """
-        SELECT order_id, order_date, item_count, status
-        FROM orders
-        WHERE user_email = ?
-        ORDER BY order_date DESC
-    """;
+            SELECT order_id, order_date, item_count, status
+            FROM orders
+            WHERE user_email = ?
+            ORDER BY order_date DESC
+        """;
 
         try (Connection conn = DatabaseManager.getConnection();
              java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -745,14 +729,14 @@ public class IPOS_PU_GUI extends JFrame {
         }
 
         String insertOrder = """
-        INSERT INTO orders (order_id, user_email, order_date, item_count, status, total_amount)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """;
+            INSERT INTO orders (order_id, user_email, order_date, item_count, status, total_amount)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """;
 
         String insertItem = """
-        INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, line_total)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """;
+            INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, line_total, campaign_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """;
 
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
@@ -771,6 +755,7 @@ public class IPOS_PU_GUI extends JFrame {
                 for (CartItem item : shoppingCart) {
                     double unitPrice = getEffectivePrice(item.product);
                     double lineTotal = unitPrice * item.quantity;
+                    String appliedCampaignId = getAppliedCampaignIdForProduct(item.product);
 
                     itemStmt.setString(1, orderId);
                     itemStmt.setString(2, item.product.id);
@@ -778,6 +763,7 @@ public class IPOS_PU_GUI extends JFrame {
                     itemStmt.setInt(4, item.quantity);
                     itemStmt.setDouble(5, unitPrice);
                     itemStmt.setDouble(6, lineTotal);
+                    itemStmt.setString(7, appliedCampaignId);
                     itemStmt.addBatch();
                 }
 
@@ -798,6 +784,39 @@ public class IPOS_PU_GUI extends JFrame {
                     "Database Error",
                     JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private List<Campaign> getActiveCampaignsForProduct(String productId) {
+        List<Campaign> matchingCampaigns = new ArrayList<>();
+
+        for (Campaign campaign : CampaignStore.getActiveCampaigns()) {
+            for (CampaignItem item : campaign.getItems()) {
+                if (item.getItemId().equalsIgnoreCase(productId)) {
+                    matchingCampaigns.add(campaign);
+                }
+            }
+        }
+
+        return matchingCampaigns;
+    }
+
+    private String getAppliedCampaignIdForProduct(Product product) {
+        Campaign bestCampaign = null;
+        double bestPrice = product.price;
+
+        for (Campaign campaign : CampaignStore.getActiveCampaigns()) {
+            for (CampaignItem item : campaign.getItems()) {
+                if (item.getItemId().equalsIgnoreCase(product.id)) {
+                    double discounted = product.price * (1 - item.getDiscountRate() / 100.0);
+                    if (discounted < bestPrice) {
+                        bestPrice = discounted;
+                        bestCampaign = campaign;
+                    }
+                }
+            }
+        }
+
+        return bestCampaign != null ? bestCampaign.getCampaignId() : null;
     }
 
     // ==================== Simple Model Classes ====================
@@ -841,9 +860,15 @@ public class IPOS_PU_GUI extends JFrame {
         SwingUtilities.invokeLater(() -> {
             try {
                 DatabaseManager.initialise();
+
+                PromotionService promotionService = new PromotionService();
+                promotionService.ensureMetricsExistForAllCampaigns();
+                CampaignStore.loadFromDatabase(promotionService);
+
                 Connection conn = DatabaseManager.getConnection();
                 IPOS_PU_GUI gui = new IPOS_PU_GUI();
                 gui.reportService = new ReportService(conn);
+
             } catch (SQLException e) {
                 JOptionPane.showMessageDialog(null, "Database connection failed: " + e.getMessage());
             }

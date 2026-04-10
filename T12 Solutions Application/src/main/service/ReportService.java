@@ -51,19 +51,7 @@ public class ReportService {
             GROUP BY oi.product_id, oi.product_name, oi.unit_price
             ORDER BY oi.product_id
         """;
-//        String sql = "SELECT " +
-//                "p.item_id, " +
-//                "p.description, " +
-//                "SUM(oi.quantity) AS quantity_sold, " +
-//                "p.unit_price " +
-//                "FROM online_orders o " +
-//                "JOIN order_items oi ON o.order_id = oi.order_id " +
-//                "JOIN products p ON oi.item_id = p.item_id " +
-//                "WHERE o.order_date BETWEEN ? AND ? " +
-//                "AND o.status = 'COMPLETED' " + // Only counts orders that have been completed
-//                "GROUP BY p.item_id, p.description, p.unit_price " +
-//                "ORDER BY p.item_id";
-//
+
         List<SalesReportItem> items = new ArrayList<>();
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -114,22 +102,21 @@ public class ReportService {
     """;
 
         String soldItemsSql = """
-        SELECT
-            ci.item_id,
-            COALESCE(MAX(oi.product_name), ci.item_id) AS description,
-            ci.discount_rate,
-            COALESCE(SUM(oi.quantity), 0) AS items_sold,
-            COALESCE(SUM(oi.line_total), 0) AS total_sales
-        FROM campaign_items ci
-        LEFT JOIN campaigns c ON ci.campaign_id = c.campaign_id
-        LEFT JOIN order_items oi ON oi.product_id = ci.item_id
-        LEFT JOIN orders o
-            ON oi.order_id = o.order_id
-           AND date(o.order_date) BETWEEN date(c.start_date) AND date(c.end_date)
-        WHERE ci.campaign_id = ?
-        GROUP BY ci.item_id, ci.discount_rate
-        ORDER BY ci.item_id
+            SELECT
+                ci.item_id,
+                COALESCE(MAX(oi.product_name), ci.item_id) AS description,
+                ci.discount_rate,
+                COALESCE(SUM(oi.quantity), 0) AS items_sold,
+                COALESCE(SUM(oi.line_total), 0) AS total_sales
+            FROM campaign_items ci
+            LEFT JOIN order_items oi
+                ON oi.product_id = ci.item_id
+               AND oi.campaign_id = ci.campaign_id
+            WHERE ci.campaign_id = ?
+            GROUP BY ci.item_id, ci.discount_rate
+            ORDER BY ci.item_id
     """;
+
 
         List<CampaignReportItem> campaigns = new ArrayList<>();
 
@@ -143,8 +130,10 @@ public class ReportService {
                 while (campaignRs.next()) {
 
                     String campaignId = campaignRs.getString("campaign_id");
-                    LocalDateTime startDateTime = LocalDate.parse(campaignRs.getString("start_date")).atStartOfDay();
-                    LocalDateTime endDateTime = LocalDate.parse(campaignRs.getString("end_date")).atTime(23, 59);
+                    LocalDateTime startDateTime = parseDateTimeFlexible(campaignRs.getString("start_date"), false);
+                    LocalDateTime endDateTime = parseDateTimeFlexible(campaignRs.getString("end_date"), true);
+//                    LocalDateTime startDateTime = LocalDate.parse(campaignRs.getString("start_date")).atStartOfDay();
+//                    LocalDateTime endDateTime = LocalDate.parse(campaignRs.getString("end_date")).atTime(23, 59);
                     String discountType = campaignRs.getString("discount_type");
 
                     List<CampaignSoldItem> soldItems = new ArrayList<>();
@@ -196,93 +185,6 @@ public class ReportService {
         return new CampaignsReport(startDate, endDate, campaigns, activeCampaignCount);
     }
 
-//    public CampaignsReport generateCampaignsReport(LocalDate startDate, LocalDate endDate) throws SQLException {
-//
-//        validateDateRange(startDate, endDate);
-//
-//        /* These can change based on the database when its made.
-//
-//            This particular query fetches all campaigns active within the given date range
-//        */
-//        String campaignSql = "SELECT " +
-//                "c.campaign_id, " +
-//                "c.start_datetime, " +
-//                "c.end_datetime, " +
-//                "c.discount_type " +
-//                "FROM campaigns c " +
-//                "WHERE c.start_datetime <= ? " +
-//                "AND c.end_datetime >= ? " +
-//                "ORDER BY c.start_datetime";
-//
-//        // This query fetches all products sold within a specific campaign
-//        String soldItemsSql = "SELECT " +
-//                "p.item_id, " +
-//                "p.description, " +
-//                "ci.discount_rate, " +
-//                "SUM(oi.quantity) AS items_sold, " +
-//                "SUM(oi.quantity * p.unit_price * (1 - ci.discount_rate / 100)) AS total_sales " +
-//                "FROM campaign_items ci " +
-//                "JOIN products p ON ci.item_id = p.item_id " +
-//                "JOIN order_items oi ON oi.item_id = p.item_id " +
-//                "JOIN online_orders o ON oi.order_id = o.order_id " +
-//                "WHERE ci.campaign_id = ? " +
-//                "AND o.status = 'COMPLETED' " +
-//                "GROUP BY p.item_id, p.description, ci.discount_rate " +
-//                "ORDER BY p.item_id";
-//
-//        List<CampaignReportItem> campaigns = new ArrayList<>();
-//
-//        try (PreparedStatement campaignStmt = connection.prepareStatement(campaignSql)) {
-//
-//            campaignStmt.setObject(1,endDate);
-//            campaignStmt.setObject(2, startDate);
-//
-//            try (ResultSet campaignRs = campaignStmt.executeQuery()) {
-//
-//                while (campaignRs.next()) {
-//
-//                    String campaignId = campaignRs.getString("campaign_id");
-//                    LocalDateTime startDateTime = campaignRs.getObject("start_datetime", LocalDateTime.class);
-//                    LocalDateTime endDateTime = campaignRs.getObject("end_datetime", LocalDateTime.class);
-//                    String discountType = campaignRs.getString("discount_type");
-//
-//                    // For each campaign, fetch its sold items in a nested query
-//                    List<CampaignSoldItem> soldItems = new ArrayList<>();
-//
-//                    try (PreparedStatement soldStmt = connection.prepareStatement(soldItemsSql)) {
-//
-//                        soldStmt.setString(1, campaignId);
-//
-//                        try (ResultSet soldRs = soldStmt.executeQuery()) {
-//
-//                            while (soldRs.next()) {
-//
-//                                String itemId = soldRs.getString("item_id");
-//                                String description = soldRs.getString("description");
-//                                double discountRate = soldRs.getDouble("discount_rate");
-//                                int itemsSold = soldRs.getInt("items_sold");
-//                                double totalSales = soldRs.getDouble("total_sales");
-//
-//                                soldItems.add(new CampaignSoldItem(itemId, description, discountRate, itemsSold, totalSales));
-//                            }
-//                        }
-//                    }
-//
-//                    // Calculates total sales for this campaign across all products
-//                    double totalCampaignSales = soldItems.stream().mapToDouble(CampaignSoldItem::getTotalSales).sum();
-//                    campaigns.add(new CampaignReportItem(campaignId, startDateTime, endDateTime, discountType, soldItems, totalCampaignSales));
-//
-//                }
-//            }
-//        }
-//
-//        // Counts how many campaigns are still active right now
-//        int activeCampaignCount = (int) campaigns.stream().filter(c -> !c.getEndDateTime().isBefore(LocalDateTime.now())).count();
-//
-//        return new CampaignsReport(startDate, endDate, campaigns, activeCampaignCount);
-//
-//    }
-
     public CampaignEngagementReport generateCampaignEngagementReport(String campaignId) throws SQLException {
 
         if (campaignId == null || campaignId.trim().isEmpty()) {
@@ -299,20 +201,23 @@ public class ReportService {
             WHERE c.campaign_id = ?
         """;
 
+        String campaignHitsSql = """
+            SELECT campaign_hits
+            FROM campaign_metrics
+            WHERE campaign_id = ?
+        """;
+
         String itemsSql = """
             SELECT
                 ci.item_id,
-                COALESCE(MAX(oi.product_name), ci.item_id) AS description,
-                0 AS hit_count,
-                COALESCE(SUM(oi.quantity), 0) AS purchase_count
+                ci.item_id AS description,
+                COALESCE(cim.item_hits, 0) AS hit_count,
+                COALESCE(cim.item_purchases, 0) AS purchase_count
             FROM campaign_items ci
-            LEFT JOIN campaigns c ON ci.campaign_id = c.campaign_id
-            LEFT JOIN order_items oi ON oi.product_id = ci.item_id
-            LEFT JOIN orders o
-                ON oi.order_id = o.order_id
-                AND date(o.order_date) BETWEEN date(c.start_date) AND date(c.end_date)
+            LEFT JOIN campaign_item_metrics cim
+                ON ci.campaign_id = cim.campaign_id
+                AND ci.item_id = cim.item_id
             WHERE ci.campaign_id = ?
-            GROUP BY ci.item_id
             ORDER BY ci.item_id
         """;
 
@@ -327,10 +232,22 @@ public class ReportService {
             try (ResultSet rs = campaignStmt.executeQuery()) {
                 if (rs.next()) {
                     campaignDescription = rs.getString("discount_type");
-                    startDateTime = LocalDate.parse(rs.getString("start_date")).atStartOfDay();
-                    endDateTime = LocalDate.parse(rs.getString("end_date")).atTime(23, 59);
+                    startDateTime = parseDateTimeFlexible(rs.getString("start_date"), false);
+                    endDateTime = parseDateTimeFlexible(rs.getString("end_date"), true);
                 } else {
                     throw new IllegalArgumentException("Campaign not found: " + campaignId);
+                }
+            }
+        }
+
+        int campaignHits = 0;
+
+        try (PreparedStatement hitsStmt = connection.prepareStatement(campaignHitsSql)) {
+            hitsStmt.setString(1, campaignId);
+
+            try (ResultSet rs = hitsStmt.executeQuery()) {
+                if (rs.next()) {
+                    campaignHits = rs.getInt("campaign_hits");
                 }
             }
         }
@@ -342,6 +259,13 @@ public class ReportService {
             itemsStmt.setString(1, campaignId);
 
             try (ResultSet rs = itemsStmt.executeQuery()) {
+
+                rows.add(new CampaignEngagementRow(
+                        "Campaign",
+                        "Campaign link clicks",
+                        campaignHits,
+                        0
+                ));
 
                 int itemNumber = 1;
 
@@ -374,80 +298,20 @@ public class ReportService {
         );
     }
 
-//    public CampaignEngagementReport generateCampaignEngagementReport(String campaignId) throws SQLException {
-//
-//        if (campaignId == null || campaignId.trim().isEmpty()) {
-//            throw new IllegalArgumentException("Campaign ID must not be null or empty.");
-//        }
-//
-//        String campaignSql = "SELECT " +
-//                "c.campaign_id, " +
-//                "c.description, " +
-//                "c.start_datetime, " +
-//                "c.end_datetime, " +
-//                "c.hit_count " +
-//                "FROM campaigns c " +
-//                "WHERE c.campaign_id = ?";
-//
-//        String itemsSql = "SELECT " +
-//                "p.item_id, " +
-//                "p.description, " +
-//                "ci.hit_count, " +
-//                "ci.purchase_count " +
-//                "FROM campaign_items ci " +
-//                "JOIN products p ON ci.item_id = p.item_id " +
-//                "WHERE ci.campaign_id = ? " +
-//                "ORDER BY p.item_id";
-//
-//        String campaignDescription = null;
-//        LocalDateTime startDateTime = null;
-//        LocalDateTime endDateTime = null;
-//        int campaignHits = 0;
-//
-//        try (PreparedStatement campaignStmt = connection.prepareStatement(campaignSql)) {
-//
-//            campaignStmt.setString(1, campaignId);
-//
-//            try (ResultSet rs = campaignStmt.executeQuery()) {
-//
-//                if (rs.next()) {
-//                    campaignDescription = rs.getString("description");
-//                    startDateTime = rs.getObject("start_datetime", LocalDateTime.class);
-//                    endDateTime = rs.getObject("end_datetime", LocalDateTime.class);
-//                    campaignHits = rs.getInt("hit_count");
-//                }
-//            }
-//        }
-//
-//        List<CampaignEngagementRow> rows = new ArrayList<>();
-//
-//        rows.add(new CampaignEngagementRow(campaignId, "Campaign hits", campaignHits, 0));
-//
-//        try (PreparedStatement itemsStmt = connection.prepareStatement(itemsSql)) {
-//
-//            itemsStmt.setString(1, campaignId);
-//
-//            try (ResultSet rs = itemsStmt.executeQuery()) {
-//
-//                int itemNumber = 1;
-//
-//                while (rs.next()) {
-//
-//                    String description = rs.getString("description");
-//                    int hitCount = rs.getInt("hit_count");
-//                    int purchaseCount = rs.getInt("purchase_count");
-//                    String counterId = "Item(" + itemNumber + ") hits";
-//                    String counterDescription = description + " hits";
-//
-//                    rows.add(new CampaignEngagementRow(counterId, counterDescription, hitCount, purchaseCount));
-//
-//                    itemNumber++;
-//                }
-//            }
-//        }
-//
-//        return new CampaignEngagementReport(campaignId, campaignDescription, startDateTime, endDateTime, rows);
-//    }
+    private LocalDateTime parseDateTimeFlexible(String value, boolean endOfDay) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException("Date value must not be null or empty.");
+        }
+
+        value = value.trim();
+
+        if (value.length() == 10) { // yyyy-MM-dd
+            LocalDate date = LocalDate.parse(value);
+            return endOfDay ? date.atTime(23, 59) : date.atStartOfDay();
+        }
+
+        return LocalDateTime.parse(value);
+    }
 
     private void validateDateRange(LocalDate start, LocalDate end) {
         if (start == null || end == null) {
