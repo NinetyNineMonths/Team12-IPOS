@@ -41,6 +41,14 @@ public class DatabaseManager {
             );
         """;
 
+        String productsTable = """
+            CREATE TABLE IF NOT EXISTS products (
+                product_id    TEXT    PRIMARY KEY,
+                product_name  TEXT    NOT NULL,
+                unit_price    REAL    NOT NULL
+            );
+        """;
+
         String ordersTable = """
             CREATE TABLE IF NOT EXISTS orders (
                 order_id      TEXT    PRIMARY KEY,
@@ -61,6 +69,7 @@ public class DatabaseManager {
                 quantity      INTEGER NOT NULL,
                 unit_price    REAL    NOT NULL,
                 line_total    REAL    NOT NULL,
+                PRIMARY KEY (order_id, product_id),
                 FOREIGN KEY (order_id) REFERENCES orders(order_id)
             );
         """;
@@ -70,6 +79,7 @@ public class DatabaseManager {
             stmt.execute(usersTable);
             stmt.execute(campaignsTable);
             stmt.execute(campaignItemsTable);
+            stmt.execute(productsTable);
             stmt.execute(ordersTable);
             stmt.execute(orderItemsTable);
             seedUsersIfEmpty(conn);

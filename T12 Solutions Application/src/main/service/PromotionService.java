@@ -5,8 +5,10 @@ import main.model.Campaign;
 import main.model.CampaignItem;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,8 +37,8 @@ public class PromotionService {
 
             try (PreparedStatement ps = conn.prepareStatement(insertCampaign)) {
                 ps.setString(1, campaign.getCampaignId());
-                ps.setString(2, campaign.getStartDateTime().format(FORMATTER));
-                ps.setString(3, campaign.getEndDateTime().format(FORMATTER));
+                ps.setString(2, campaign.getStartDateTime().toLocalDate().toString());
+                ps.setString(3, campaign.getEndDateTime().toLocalDate().toString());
                 ps.setString(4, campaign.getDiscountType());
                 ps.executeUpdate();
             }
@@ -104,18 +106,18 @@ public class PromotionService {
         String sql = """
             SELECT * FROM campaigns
             WHERE cancelled = 0
-              AND start_date <= ?
-              AND end_date   >= ?
+              AND date(start_date) <= date(?)
+              AND date(end_date)   >= date(?)
             ORDER BY start_date DESC
         """;
         List<Campaign> campaigns = new ArrayList<>();
-        String now = LocalDateTime.now().format(FORMATTER);
+        String today = LocalDate.now().toString();
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, now);
-            ps.setString(2, now);
+            ps.setString(1, today);
+            ps.setString(2, today);
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
@@ -228,8 +230,8 @@ public class PromotionService {
 
         return new Campaign(
                 id,
-                LocalDateTime.parse(rs.getString("start_date"), FORMATTER),
-                LocalDateTime.parse(rs.getString("end_date"), FORMATTER),
+                parseStartDateTime(rs.getString("start_date")),
+                parseEndDateTime(rs.getString("end_date")),
                 rs.getString("discount_type"),
                 items,
                 rs.getInt("cancelled") == 1
@@ -252,5 +254,21 @@ public class PromotionService {
             }
         }
         return items;
+    }
+
+    private LocalDateTime parseStartDateTime(String rawValue) {
+        try {
+            return LocalDate.parse(rawValue).atStartOfDay();
+        } catch (DateTimeParseException ignored) {
+            return LocalDateTime.parse(rawValue);
+        }
+    }
+
+    private LocalDateTime parseEndDateTime(String rawValue) {
+        try {
+            return LocalDate.parse(rawValue).atTime(23, 59);
+        } catch (DateTimeParseException ignored) {
+            return LocalDateTime.parse(rawValue);
+        }
     }
 }

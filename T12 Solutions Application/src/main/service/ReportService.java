@@ -15,6 +15,7 @@ import java.sql.SQLException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -122,10 +123,12 @@ public class ReportService {
             COALESCE(SUM(oi.line_total), 0) AS total_sales
         FROM campaign_items ci
         LEFT JOIN campaigns c ON ci.campaign_id = c.campaign_id
-        LEFT JOIN order_items oi ON oi.product_id = ci.item_id
         LEFT JOIN orders o
+            ON date(o.order_date) BETWEEN date(c.start_date) AND date(c.end_date)
+           AND o.status = 'Received'
+        LEFT JOIN order_items oi
             ON oi.order_id = o.order_id
-           AND date(o.order_date) BETWEEN date(c.start_date) AND date(c.end_date)
+           AND oi.product_id = ci.item_id
         WHERE ci.campaign_id = ?
         GROUP BY ci.item_id, ci.discount_rate
         ORDER BY ci.item_id
@@ -143,8 +146,8 @@ public class ReportService {
                 while (campaignRs.next()) {
 
                     String campaignId = campaignRs.getString("campaign_id");
-                    LocalDateTime startDateTime = LocalDate.parse(campaignRs.getString("start_date")).atStartOfDay();
-                    LocalDateTime endDateTime = LocalDate.parse(campaignRs.getString("end_date")).atTime(23, 59);
+                    LocalDateTime startDateTime = parseStartDateTime(campaignRs.getString("start_date"));
+                    LocalDateTime endDateTime = parseEndDateTime(campaignRs.getString("end_date"));
                     String discountType = campaignRs.getString("discount_type");
 
                     List<CampaignSoldItem> soldItems = new ArrayList<>();
@@ -307,10 +310,12 @@ public class ReportService {
                 COALESCE(SUM(oi.quantity), 0) AS purchase_count
             FROM campaign_items ci
             LEFT JOIN campaigns c ON ci.campaign_id = c.campaign_id
-            LEFT JOIN order_items oi ON oi.product_id = ci.item_id
             LEFT JOIN orders o
+                ON date(o.order_date) BETWEEN date(c.start_date) AND date(c.end_date)
+                AND o.status = 'Received'
+            LEFT JOIN order_items oi
                 ON oi.order_id = o.order_id
-                AND date(o.order_date) BETWEEN date(c.start_date) AND date(c.end_date)
+                AND oi.product_id = ci.item_id
             WHERE ci.campaign_id = ?
             GROUP BY ci.item_id
             ORDER BY ci.item_id
@@ -327,8 +332,8 @@ public class ReportService {
             try (ResultSet rs = campaignStmt.executeQuery()) {
                 if (rs.next()) {
                     campaignDescription = rs.getString("discount_type");
-                    startDateTime = LocalDate.parse(rs.getString("start_date")).atStartOfDay();
-                    endDateTime = LocalDate.parse(rs.getString("end_date")).atTime(23, 59);
+                    startDateTime = parseStartDateTime(rs.getString("start_date"));
+                    endDateTime = parseEndDateTime(rs.getString("end_date"));
                 } else {
                     throw new IllegalArgumentException("Campaign not found: " + campaignId);
                 }
@@ -455,6 +460,22 @@ public class ReportService {
         }
         if (start.isAfter(end)) {
             throw new IllegalArgumentException("Start date (" + start + ") must not be after end date (" + end + ").");
+        }
+    }
+
+    private LocalDateTime parseStartDateTime(String rawValue) {
+        try {
+            return LocalDate.parse(rawValue).atStartOfDay();
+        } catch (DateTimeParseException ignored) {
+            return LocalDateTime.parse(rawValue);
+        }
+    }
+
+    private LocalDateTime parseEndDateTime(String rawValue) {
+        try {
+            return LocalDate.parse(rawValue).atTime(23, 59);
+        } catch (DateTimeParseException ignored) {
+            return LocalDateTime.parse(rawValue);
         }
     }
 }
