@@ -119,7 +119,7 @@ public class DatabaseManager {
                 payment_id     TEXT    PRIMARY KEY,
                 order_id       TEXT    NOT NULL,
                 user_email     TEXT    NOT NULL,
-                address_line_1 TEXT    NOT NULL,
+                address_line_1 TEXT,
                 address_line_2 TEXT,
                 payment_date   TEXT    NOT NULL DEFAULT(datetime('now')),
                 payment_status TEXT    NOT NULL DEFAULT 'PENDING',
