@@ -1,13 +1,19 @@
 package tests.service;
 
+import main.db.DatabaseManager;
 import main.model.Campaign;
 import main.model.CampaignItem;
 import main.service.CampaignStore;
+import main.service.PromotionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -139,6 +145,51 @@ public class CampaignStoreTest {
         assertEquals(1, CampaignStore.getAllCampaigns().size());
     }
 
+    // Expected: adding duplicate campaign IDs (case-insensitive) keeps only first campaign.
+    @Test
+    void testAddCampaign_DuplicateId_IgnoresSecond() {
+        Campaign first = buildCampaign("Camp-Dupe", LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1));
+        Campaign duplicate = buildCampaign("camp-dupe", LocalDateTime.now().minusDays(2), LocalDateTime.now().plusDays(2));
+
+        CampaignStore.addCampaign(first);
+        CampaignStore.addCampaign(duplicate);
+
+        List<Campaign> campaigns = CampaignStore.getAllCampaigns();
+        assertEquals(1, campaigns.size());
+        assertEquals("Camp-Dupe", campaigns.get(0).getCampaignId());
+    }
+
+    // Expected: clear removes all campaigns from store.
+    @Test
+    void testClear_RemovesAllCampaigns() {
+        CampaignStore.addCampaign(buildCampaign("CAMP-201", LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1)));
+        CampaignStore.addCampaign(buildCampaign("CAMP-202", LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1)));
+
+        CampaignStore.clear();
+
+        assertTrue(CampaignStore.getAllCampaigns().isEmpty());
+    }
+
+    // Expected: loadFromDatabase refreshes store with campaigns persisted in DB.
+    @Test
+    void testLoadFromDatabase_LoadsPersistedCampaigns() throws SQLException {
+        DatabaseManager.initialise();
+        PromotionService promotionService = new PromotionService();
+
+        String campaignId = "DB-CAMP-" + UUID.randomUUID();
+        Campaign dbCampaign = buildCampaign(campaignId, LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(1));
+        assertTrue(promotionService.createCampaign(dbCampaign));
+
+        try {
+            CampaignStore.loadFromDatabase(promotionService);
+            Campaign loaded = CampaignStore.findById(campaignId);
+            assertNotNull(loaded);
+            assertEquals(campaignId, loaded.getCampaignId());
+        } finally {
+            deleteCampaignDirectly(campaignId);
+        }
+    }
+
     private Campaign buildCampaign(String id, LocalDateTime start, LocalDateTime end) {
         List<CampaignItem> items = List.of(new CampaignItem("ITEM-001", 10.0));
         return new Campaign(id, start, end, "PERCENTAGE", items, false);
@@ -147,6 +198,34 @@ public class CampaignStoreTest {
     private void clearCampaignStore() {
         for (Campaign c : CampaignStore.getAllCampaigns()) {
             CampaignStore.removeCampaign(c.getCampaignId());
+        }
+    }
+
+    private void deleteCampaignDirectly(String campaignId) throws SQLException {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            try (PreparedStatement deleteItemMetrics = conn.prepareStatement(
+                    "DELETE FROM campaign_item_metrics WHERE campaign_id = ?")) {
+                deleteItemMetrics.setString(1, campaignId);
+                deleteItemMetrics.executeUpdate();
+            }
+
+            try (PreparedStatement deleteCampaignMetrics = conn.prepareStatement(
+                    "DELETE FROM campaign_metrics WHERE campaign_id = ?")) {
+                deleteCampaignMetrics.setString(1, campaignId);
+                deleteCampaignMetrics.executeUpdate();
+            }
+
+            try (PreparedStatement deleteItems = conn.prepareStatement(
+                    "DELETE FROM campaign_items WHERE campaign_id = ?")) {
+                deleteItems.setString(1, campaignId);
+                deleteItems.executeUpdate();
+            }
+
+            try (PreparedStatement deleteCampaign = conn.prepareStatement(
+                    "DELETE FROM campaigns WHERE campaign_id = ?")) {
+                deleteCampaign.setString(1, campaignId);
+                deleteCampaign.executeUpdate();
+            }
         }
     }
 }

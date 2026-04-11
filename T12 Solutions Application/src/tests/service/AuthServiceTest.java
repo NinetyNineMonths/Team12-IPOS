@@ -138,6 +138,43 @@ public class AuthServiceTest {
         assertFalse(authService.emailExists(" "));
     }
 
+    // Expected: login normalizes email case and surrounding spaces.
+    @Test
+    void testLogin_EmailWithCaseAndWhitespace_ReturnsUser() throws SQLException {
+        String email = uniqueEmail();
+        insertUser(email, "Pass123!", "CUSTOMER", 1, "Case User");
+
+        User user = authService.login("  " + email.toUpperCase() + "  ", "Pass123!");
+
+        assertNotNull(user);
+        assertEquals(email, user.getEmail());
+    }
+
+    // Expected: registration trims full name and normalizes email before persisting.
+    @Test
+    void testRegisterNonCommercialMember_TrimsInputsAndNormalizesEmail() throws SQLException {
+        String rawEmail = "  " + uniqueEmail().toUpperCase() + "  ";
+        String rawName = "  Trim Me  ";
+
+        String tempPassword = authService.registerNonCommercialMember(rawName, rawEmail);
+
+        assertNotNull(tempPassword);
+        String normalizedEmail = rawEmail.trim().toLowerCase();
+        usersToDelete.add(normalizedEmail);
+
+        User created = authService.login(normalizedEmail, tempPassword);
+        assertNotNull(created);
+        assertEquals("Trim Me", created.getFullName());
+        assertEquals(normalizedEmail, created.getEmail());
+    }
+
+    // Expected: registration returns null for blank required values.
+    @Test
+    void testRegisterNonCommercialMember_BlankInputs_ReturnsNull() {
+        assertNull(authService.registerNonCommercialMember(" ", "person@ipos.com"));
+        assertNull(authService.registerNonCommercialMember("Name", " "));
+    }
+
     private String uniqueEmail() {
         return "test-" + UUID.randomUUID() + "@ipos.com";
     }

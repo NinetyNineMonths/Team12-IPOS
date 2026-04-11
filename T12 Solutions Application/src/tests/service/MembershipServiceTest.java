@@ -135,4 +135,65 @@ public class MembershipServiceTest {
         List<String> applications = membershipService.getCommercialApplications();
         assertEquals(2, applications.size());
     }
+
+    // Expected: returns false when any required field is blank after trimming.
+    @Test
+    void testSubmitCommercialApplication_BlankRequiredFields_ReturnsFalse() {
+        assertFalse(membershipService.submitCommercialApplication(
+                "MediCorp Ltd",
+                " ",
+                "Jane Director",
+                "01234 567890",
+                "Email"
+        ));
+
+        assertFalse(membershipService.submitCommercialApplication(
+                "MediCorp Ltd",
+                "10 Health Street, London",
+                " ",
+                "01234 567890",
+                "Email"
+        ));
+
+        assertFalse(membershipService.submitCommercialApplication(
+                "MediCorp Ltd",
+                "10 Health Street, London",
+                "Jane Director",
+                " ",
+                "Email"
+        ));
+
+        assertFalse(membershipService.submitCommercialApplication(
+                "MediCorp Ltd",
+                "10 Health Street, London",
+                "Jane Director",
+                "01234 567890",
+                " "
+        ));
+
+        assertTrue(membershipService.getCommercialApplications().isEmpty());
+    }
+
+    // Expected: valid submissions preserve insertion order in returned list.
+    @Test
+    void testGetCommercialApplications_PreservesSubmissionOrder() {
+        membershipService.submitCommercialApplication(
+                "Alpha Pharma",
+                "1 Clinic Road",
+                "Director One",
+                "000111222",
+                "Email"
+        );
+        membershipService.submitCommercialApplication(
+                "Beta Pharma",
+                "2 Clinic Road",
+                "Director Two",
+                "333444555",
+                "SMS"
+        );
+
+        List<String> applications = membershipService.getCommercialApplications();
+        assertTrue(applications.get(0).contains("Company: Alpha Pharma"));
+        assertTrue(applications.get(1).contains("Company: Beta Pharma"));
+    }
 }

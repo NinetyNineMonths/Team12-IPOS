@@ -4,6 +4,8 @@ import main.model.SalesReport;
 import main.model.CampaignsReport;
 import main.model.CampaignEngagementReport;
 import main.model.CampaignEngagementRow;
+import main.model.CampaignReportItem;
+import main.model.CampaignSoldItem;
 import main.service.ReportService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +17,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class ReportServiceTest {
@@ -43,6 +46,69 @@ public class ReportServiceTest {
         assertTrue(report.getTotalRevenue() > 0, "Total revenue should be greater than 0");
         assertEquals(start, report.getStartDate(), "Start date should match input");
         assertEquals(end,   report.getEndDate(),   "End date should match input");
+    }
+
+    // Expected: includes only 'Received' orders and excludes other statuses.
+    @Test
+    void testGenerateSalesReport_ExcludesNonReceivedOrders() throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("""
+                INSERT INTO orders VALUES
+                ('ORD002', 'customer@ipos.com', '2025-05-16', 1, 'Pending', 100.00)
+            """);
+            stmt.execute("""
+                INSERT INTO order_items VALUES
+                ('ORD002', '100 00003', 'Vitamin C', 500, 0.20, 100.00, NULL)
+            """);
+        }
+
+        SalesReport report = reportService.generateSalesReport(
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31)
+        );
+
+        assertEquals(350, report.getTotalUnitsSold(), "Pending order should be excluded from totals.");
+        assertEquals(75.0, report.getTotalRevenue(), 0.0001, "Pending order revenue should be excluded.");
+    }
+
+    // Expected: aggregates quantities and totals when the same item appears in multiple received orders.
+    @Test
+    void testGenerateSalesReport_AggregatesSameProductAcrossOrders() throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("""
+                INSERT INTO orders VALUES
+                ('ORD003', 'customer@ipos.com', '2025-06-01', 1, 'Received', 10.00)
+            """);
+            stmt.execute("""
+                INSERT INTO order_items VALUES
+                ('ORD003', '100 00002', 'Aspirin', 20, 0.50, 10.00, 'Camp 05')
+            """);
+        }
+
+        SalesReport report = reportService.generateSalesReport(
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31)
+        );
+
+        assertEquals(370, report.getTotalUnitsSold());
+        assertEquals(85.0, report.getTotalRevenue(), 0.0001);
+
+        assertEquals(2, report.getItems().size(), "Aspirin should be aggregated into a single row.");
+        assertEquals(120, findSalesItem(report, "100 00002").getQuantitySold());
+    }
+
+    // Expected: returns empty report with zero totals when no received orders exist in range.
+    @Test
+    void testGenerateSalesReport_NoOrdersInRange_ReturnsEmptyTotals() throws SQLException {
+        SalesReport report = reportService.generateSalesReport(
+                LocalDate.of(2030, 1, 1),
+                LocalDate.of(2030, 12, 31)
+        );
+
+        assertNotNull(report);
+        assertTrue(report.isEmpty());
+        assertEquals(0, report.getTotalUnitsSold());
+        assertEquals(0.0, report.getTotalRevenue(), 0.0001);
     }
 
     // Expected: throws IllegalArgumentException when start date is after end date.
@@ -76,6 +142,54 @@ public class ReportServiceTest {
         assertFalse(report.isEmpty(), "Report should contain campaign data");
         assertEquals(start, report.getStartDate(), "Start date should match input");
         assertEquals(end,   report.getEndDate(),   "End date should match input");
+    }
+
+    // Expected: report includes campaign item rows with sold quantities and campaign total.
+    @Test
+    void testGenerateCampaignsReport_ReturnsExpectedSoldItemMetrics() throws SQLException {
+        CampaignsReport report = reportService.generateCampaignsReport(
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31)
+        );
+
+        assertFalse(report.getCampaigns().isEmpty());
+        CampaignReportItem campaign = report.getCampaigns().get(0);
+        assertEquals("Camp 05", campaign.getCampaignId());
+        assertEquals(1, campaign.getSoldItems().size());
+
+        CampaignSoldItem soldItem = campaign.getSoldItems().get(0);
+        assertEquals("100 00002", soldItem.getItemId());
+        assertEquals(100, soldItem.getItemsSold());
+        assertEquals(50.0, soldItem.getTotalSales(), 0.0001);
+        assertEquals(50.0, campaign.getTotalCampaignSales(), 0.0001);
+    }
+
+    // Expected: date-only campaign strings parse to start-of-day and end-of-day boundaries.
+    @Test
+    void testGenerateCampaignsReport_DateOnlyCampaignDates_ParseCorrectly() throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("""
+                INSERT INTO campaigns VALUES
+                ('Camp DateOnly', '2025-02-01', '2025-02-10', 'PERCENTAGE', 0)
+            """);
+            stmt.execute("""
+                INSERT INTO campaign_items VALUES
+                ('Camp DateOnly', '100 00001', 3.0)
+            """);
+        }
+
+        CampaignsReport report = reportService.generateCampaignsReport(
+                LocalDate.of(2025, 2, 1),
+                LocalDate.of(2025, 2, 10)
+        );
+
+        CampaignReportItem dateOnlyCampaign = report.getCampaigns().stream()
+                .filter(c -> "Camp DateOnly".equals(c.getCampaignId()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(LocalDateTime.of(2025, 2, 1, 0, 0), dateOnlyCampaign.getStartDateTime());
+        assertEquals(LocalDateTime.of(2025, 2, 10, 23, 59), dateOnlyCampaign.getEndDateTime());
     }
 
     // Expected: throws IllegalArgumentException when campaigns report range is invalid.
@@ -122,6 +236,32 @@ public class ReportServiceTest {
         assertEquals("Item(1)", firstItemRow.getCounterId());
         assertEquals(40, firstItemRow.getHitsCount());
         assertEquals(10, firstItemRow.getpurchases());
+    }
+
+    // Expected: engagement report metadata is parsed correctly from campaign row.
+    @Test
+    void testGenerateCampaignEngagementReport_ContainsCampaignMetadata() throws SQLException {
+        CampaignEngagementReport report = reportService.generateCampaignEngagementReport("Camp 05");
+
+        assertEquals(LocalDateTime.of(2025, 3, 1, 0, 0), report.getStartDateTime());
+        assertEquals(LocalDateTime.of(2025, 3, 31, 23, 59), report.getEndDateTime());
+        assertFalse(report.isEmpty());
+    }
+
+    // Expected: missing campaign-metrics row defaults campaign hits to zero while item metrics stay intact.
+    @Test
+    void testGenerateCampaignEngagementReport_MissingCampaignMetrics_DefaultsCampaignHitsOnly() throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("DELETE FROM campaign_metrics WHERE campaign_id = 'Camp 05'");
+        }
+
+        CampaignEngagementReport report = reportService.generateCampaignEngagementReport("Camp 05");
+
+        assertNotNull(report);
+        assertEquals(2, report.getRows().size());
+        assertEquals(0, report.getRows().get(0).getHitsCount(), "Campaign hits should default to 0.");
+        assertEquals(40, report.getRows().get(1).getHitsCount(), "Item hits should remain from existing metrics.");
+        assertEquals(10, report.getRows().get(1).getpurchases(), "Item purchases should remain from existing metrics.");
     }
 
     // Expected: throws IllegalArgumentException when campaign ID is null or blank.
@@ -267,5 +407,12 @@ public class ReportServiceTest {
                 ('Camp 05', '100 00002', 40, 10)
             """);
         }
+    }
+
+    private main.model.SalesReportItem findSalesItem(SalesReport report, String itemId) {
+        return report.getItems().stream()
+                .filter(i -> itemId.equals(i.getItemId()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Missing expected item in sales report: " + itemId));
     }
 }

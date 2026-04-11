@@ -6,6 +6,10 @@ import main.service.CatalogueService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -70,5 +74,73 @@ public class CatalogueServiceTest {
         firstCall.clear();
 
         assertEquals(5, secondCall.size(), "Second call should not be affected by first call mutations.");
+    }
+
+    // Expected: reduceStock returns true and decreases stock by requested quantity.
+    @Test
+    void testReduceStock_ValidQuantity_ReturnsTrueAndUpdatesStock() throws SQLException {
+        setStock("PARA001", 120);
+        int before = getStock("PARA001");
+
+        boolean reduced = catalogueService.reduceStock("PARA001", 3);
+        int after = getStock("PARA001");
+
+        assertTrue(reduced);
+        assertEquals(before - 3, after);
+    }
+
+    // Expected: reduceStock returns false and leaves stock unchanged when quantity exceeds stock.
+    @Test
+    void testReduceStock_InsufficientStock_ReturnsFalseAndLeavesStock() throws SQLException {
+        setStock("PARA001", 2);
+        int before = getStock("PARA001");
+
+        boolean reduced = catalogueService.reduceStock("PARA001", 3);
+        int after = getStock("PARA001");
+
+        assertFalse(reduced);
+        assertEquals(before, after);
+    }
+
+    // Expected: reduceStock returns false for a missing product ID.
+    @Test
+    void testReduceStock_UnknownProduct_ReturnsFalse() {
+        boolean reduced = catalogueService.reduceStock("UNKNOWN-PRODUCT", 1);
+        assertFalse(reduced);
+    }
+
+    // Expected: zero-quantity reduction succeeds for an existing product and keeps stock unchanged.
+    @Test
+    void testReduceStock_ZeroQuantity_ReturnsTrueAndNoStockChange() throws SQLException {
+        setStock("PARA001", 120);
+        int before = getStock("PARA001");
+
+        boolean reduced = catalogueService.reduceStock("PARA001", 0);
+        int after = getStock("PARA001");
+
+        assertTrue(reduced);
+        assertEquals(before, after);
+    }
+
+    private int getStock(String productId) throws SQLException {
+        String sql = "SELECT stock FROM products WHERE product_id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                assertTrue(rs.next(), "Expected product to exist: " + productId);
+                return rs.getInt("stock");
+            }
+        }
+    }
+
+    private void setStock(String productId, int stock) throws SQLException {
+        String sql = "UPDATE products SET stock = ? WHERE product_id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, stock);
+            ps.setString(2, productId);
+            ps.executeUpdate();
+        }
     }
 }
