@@ -125,7 +125,7 @@ public class DatabaseManager {
                 payment_status TEXT    NOT NULL DEFAULT 'PENDING',
                 FOREIGN KEY (user_email) REFERENCES users(email),
                 FOREIGN KEY (order_id) REFERENCES orders(order_id),
-                CHECK (status IN ('PENDING','COMPLETED','FAILED','REFUNDED'))
+                CHECK (payment_status IN ('PENDING','COMPLETED','FAILED','REFUNDED'))
             );
         """;
         
@@ -181,7 +181,7 @@ public class DatabaseManager {
             stmt.execute(orderItemsTable);
             stmt.execute(commercialApplicationsTable);
             stmt.execute(paymentsTable);
-            stmt.execute(paymentInfo)
+            stmt.execute(paymentInfo);
             seedUsersIfEmpty(conn);
             seedProductsIfEmpty(conn);
         } catch (SQLException e) {
