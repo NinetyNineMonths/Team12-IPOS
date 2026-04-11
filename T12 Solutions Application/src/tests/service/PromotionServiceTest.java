@@ -25,8 +25,9 @@ public class PromotionServiceTest {
     private final List<String> campaignIdsToCleanup = new ArrayList<>();
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws SQLException {
         DatabaseManager.initialise();
+        cleanupResidualTestCampaignRows();
         promotionService = new PromotionService();
     }
 
@@ -35,6 +36,7 @@ public class PromotionServiceTest {
         for (String campaignId : campaignIdsToCleanup) {
             deleteCampaignDirectly(campaignId);
         }
+        cleanupResidualTestCampaignRows();
         campaignIdsToCleanup.clear();
     }
 
@@ -295,6 +297,18 @@ public class PromotionServiceTest {
 
     private void deleteCampaignDirectly(String campaignId) throws SQLException {
         try (Connection conn = DatabaseManager.getConnection()) {
+            try (PreparedStatement deleteItemMetrics = conn.prepareStatement(
+                    "DELETE FROM campaign_item_metrics WHERE campaign_id = ?")) {
+                deleteItemMetrics.setString(1, campaignId);
+                deleteItemMetrics.executeUpdate();
+            }
+
+            try (PreparedStatement deleteCampaignMetrics = conn.prepareStatement(
+                    "DELETE FROM campaign_metrics WHERE campaign_id = ?")) {
+                deleteCampaignMetrics.setString(1, campaignId);
+                deleteCampaignMetrics.executeUpdate();
+            }
+
             try (PreparedStatement deleteItems = conn.prepareStatement(
                     "DELETE FROM campaign_items WHERE campaign_id = ?")) {
                 deleteItems.setString(1, campaignId);
@@ -305,6 +319,27 @@ public class PromotionServiceTest {
                     "DELETE FROM campaigns WHERE campaign_id = ?")) {
                 deleteCampaign.setString(1, campaignId);
                 deleteCampaign.executeUpdate();
+            }
+        }
+    }
+
+    private void cleanupResidualTestCampaignRows() throws SQLException {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "DELETE FROM campaign_item_metrics WHERE campaign_id LIKE 'TEST-CAMP-%'")) {
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "DELETE FROM campaign_metrics WHERE campaign_id LIKE 'TEST-CAMP-%'")) {
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "DELETE FROM campaign_items WHERE campaign_id LIKE 'TEST-CAMP-%'")) {
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "DELETE FROM campaigns WHERE campaign_id LIKE 'TEST-CAMP-%'")) {
+                ps.executeUpdate();
             }
         }
     }
