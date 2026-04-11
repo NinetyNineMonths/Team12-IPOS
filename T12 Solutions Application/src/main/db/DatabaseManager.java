@@ -114,6 +114,25 @@ public class DatabaseManager {
                 );
         """;
 
+        String paymentsTable  = """
+            CREATE TABLE IF NOT EXISTS payments (
+                payment_id     TEXT    PRIMARY KEY,
+                order_id       TEXT    NOT NULL,
+                user_email     TEXT    NOT NULL,
+                address_line_1 TEXT    NOT NULL,
+                address_line_2 TEXT    DEFAULT NULL,
+                product_id     TEXT    NOT NULL,
+                product_name   TEXT    NOT NULL,
+                quantity       INTEGER NOT NULL, 
+                payment_total  REAL    NOT NULL,
+                payment_date   TEXT    NOT NULL DEFAULT(datetime('now')),
+                status         TEXT    NOT NULL DEFAULT 'PENDING',
+                FOREIGN KEY (user_email) REFERENCES users(email),
+                FOREIGN KEY (order_id) REFERENCES orders(order_id),
+                CHECK (status IN ('PENDING','COMPLETED','FAILED','REFUNDED'))
+            );
+        """;
+
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.execute(usersTable);
@@ -125,6 +144,7 @@ public class DatabaseManager {
             stmt.execute(ordersTable);
             stmt.execute(orderItemsTable);
             stmt.execute(commercialApplicationsTable);
+            stmt.execute(paymentsTable);
             seedUsersIfEmpty(conn);
             seedProductsIfEmpty(conn);
         } catch (SQLException e) {
