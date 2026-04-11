@@ -120,6 +120,41 @@ public class DatabaseManager {
                 order_id       TEXT    NOT NULL,
                 user_email     TEXT    NOT NULL,
                 address_line_1 TEXT    NOT NULL,
+                address_line_2 TEXT,
+                payment_date   TEXT    NOT NULL DEFAULT(datetime('now')),
+                payment_status TEXT    NOT NULL DEFAULT 'PENDING',
+                FOREIGN KEY (user_email) REFERENCES users(email),
+                FOREIGN KEY (order_id) REFERENCES orders(order_id),
+                CHECK (status IN ('PENDING','COMPLETED','FAILED','REFUNDED'))
+            );
+        """;
+        
+        String paymentInfo = """
+                SELECT p.payment_id,
+                       u.full_name,
+                       u.email,
+                       o.order_id,
+                       oi.product_id,
+                       oi.product_name,
+                       oi.quantity,
+                       oi.line_total,
+                       p.payment_date,
+                       p.address_line_1,
+                       p.address_line_2,
+                       p.payment_status
+                FROM payments p 
+                JOIN orders o ON p.order_id = o.order_id
+                JOIN order_items oi ON o.order_id = oi.order_id
+                JOIN users u ON p.user_email = u.email
+                """;
+        
+        /*
+        String paymentsTable  = """
+            CREATE TABLE IF NOT EXISTS payments (
+                payment_id     TEXT    PRIMARY KEY,
+                order_id       TEXT    NOT NULL,
+                user_email     TEXT    NOT NULL,
+                address_line_1 TEXT    NOT NULL,
                 address_line_2 TEXT    DEFAULT NULL,
                 product_id     TEXT    NOT NULL,
                 product_name   TEXT    NOT NULL,
@@ -132,7 +167,8 @@ public class DatabaseManager {
                 CHECK (status IN ('PENDING','COMPLETED','FAILED','REFUNDED'))
             );
         """;
-
+        */
+        
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.execute(usersTable);
@@ -145,6 +181,7 @@ public class DatabaseManager {
             stmt.execute(orderItemsTable);
             stmt.execute(commercialApplicationsTable);
             stmt.execute(paymentsTable);
+            stmt.execute(paymentInfo)
             seedUsersIfEmpty(conn);
             seedProductsIfEmpty(conn);
         } catch (SQLException e) {
