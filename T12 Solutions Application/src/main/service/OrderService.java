@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+@SuppressWarnings("SqlResolve")
 public class OrderService {
 
     private final PUCommsAPI commsApi;

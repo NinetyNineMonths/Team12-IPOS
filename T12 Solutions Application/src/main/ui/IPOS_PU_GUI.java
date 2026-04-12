@@ -21,8 +21,7 @@ import main.service.ReportService;
 import main.service.PromotionService;
 import main.model.Product;
 import main.service.CatalogueService;
-import main.api.CAMerchantStockAPI;
-import main.implementation.CAMerchantStockAPIImpl;
+import main.service.OrderService;
 
 
 /**
@@ -40,6 +39,7 @@ public class IPOS_PU_GUI extends JFrame {
     private final List<Order> myOrders = new ArrayList<>();
     private final PromotionService promotionService = new PromotionService();
     private final CatalogueService catalogueService = new CatalogueService();
+    private final OrderService orderService = new OrderService();
 
     private JTable productTable;
     private JTable cartTable;
@@ -504,18 +504,39 @@ public class IPOS_PU_GUI extends JFrame {
             return;
         }
 
-        String card = JOptionPane.showInputDialog(this, "Enter card number (demo):", "4242 4242 4242 4242");
-        if (card == null || card.length() < 4) return;
-
-        DeliveryAddress deliveryAddress = promptForDeliveryAddress();
-        if (deliveryAddress == null) {
+        String checkoutEmail = resolveCheckoutEmail();
+        if (checkoutEmail == null) {
             return;
         }
 
-        String trackingRef = "TRK-" + System.currentTimeMillis();
+        String addressLine1 = JOptionPane.showInputDialog(this, "Enter delivery address line 1:", "1 Demo Street");
+        if (addressLine1 == null || addressLine1.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Delivery address is required.");
+            return;
+        }
+        String addressLine2 = JOptionPane.showInputDialog(this, "Enter delivery address line 2 (optional):", "");
+        if (addressLine2 == null) {
+            addressLine2 = "";
+        }
 
-        boolean tenthDiscountApplied = qualifiesForTenthOrderDiscount();
-        double finalTotal = calculateCartTotalWithMemberDiscount();
+        String card = JOptionPane.showInputDialog(this, "Enter card number (demo):", "4242 4242 4242 4242");
+        if (card == null || card.replaceAll("\\s", "").length() < 12) {
+            JOptionPane.showMessageDialog(this, "Please enter a valid card number (at least 12 digits).");
+            return;
+        }
+
+        List<OrderService.OrderLine> lines = new ArrayList<>();
+        for (CartItem item : shoppingCart) {
+            double unitPrice = getEffectivePrice(item.product);
+            String campaignId = getAppliedCampaignIdForProduct(item.product);
+            lines.add(new OrderService.OrderLine(
+                    item.product.getId(),
+                    item.product.getName(),
+                    item.quantity,
+                    unitPrice,
+                    campaignId
+            ));
+        }
 
         for (CartItem cartItem : shoppingCart) {
             boolean stockUpdated = catalogueService.reduceStock(cartItem.product.getId(), cartItem.quantity);
@@ -532,18 +553,23 @@ public class IPOS_PU_GUI extends JFrame {
             }
         }
 
-        String orderId = "ORD-" + System.currentTimeMillis();
-        Order newOrder = new Order(orderId, new ArrayList<>(shoppingCart), LocalDateTime.now(), "Received");
-        myOrders.add(newOrder);
+        boolean nonCommercialMember = currentUser != null && currentUser.isCustomer();
+        OrderService.CheckoutResult result = orderService.checkoutOrder(
+                checkoutEmail,
+                lines,
+                addressLine1,
+                addressLine2,
+                card,
+                nonCommercialMember
+        );
 
-//        saveOrderToDatabase(orderId, finalTotal);
-
-        saveOrderToDatabase(orderId, finalTotal, deliveryAddress, trackingRef);
-
-        CAMerchantStockAPI caApi = new CAMerchantStockAPIImpl();
-        String caPayload = buildPaidOrderPayload(deliveryAddress);
-        String caResult = caApi.submitPaidOrder(orderId, caPayload);
-        System.out.println(caResult);
+        if (!result.success()) {
+            JOptionPane.showMessageDialog(this,
+                    "Checkout failed: " + result.message(),
+                    "Checkout Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
         for (CartItem cartItem : shoppingCart) {
             List<Campaign> matchingCampaigns = getActiveCampaignsForProduct(cartItem.product.getId());
@@ -557,18 +583,20 @@ public class IPOS_PU_GUI extends JFrame {
             }
         }
 
-        completedOrderCount++;
+        if (currentUser != null) {
+            loadOrdersFromDatabase();
+        }
 
-        if (tenthDiscountApplied) {
+        if (result.discountApplied()) {
             JOptionPane.showMessageDialog(this,
-                    "Payment successful!\nOrder ID: " + orderId +
+                    "Payment successful!\nOrder ID: " + result.orderId() +
                             "\nA 10% member discount was applied.\n" +
-                            "Final total: £" + String.format("%.2f", finalTotal) +
+                            "Final total: £" + String.format("%.2f", result.finalTotal()) +
                             "\nConfirmation emailed.");
         } else {
             JOptionPane.showMessageDialog(this,
-                    "Payment successful!\nOrder ID: " + orderId +
-                            "\nFinal total: £" + String.format("%.2f", finalTotal) +
+                    "Payment successful!\nOrder ID: " + result.orderId() +
+                            "\nFinal total: £" + String.format("%.2f", result.finalTotal()) +
                             "\nConfirmation emailed.");
         }
 
@@ -579,6 +607,18 @@ public class IPOS_PU_GUI extends JFrame {
         refreshBrowseView();
         refreshOrdersTable();
         mainTabs.setSelectedIndex(3);
+    }
+
+    private String resolveCheckoutEmail() {
+        if (currentUser != null && currentUser.getEmail() != null && !currentUser.getEmail().trim().isEmpty()) {
+            return currentUser.getEmail().trim().toLowerCase();
+        }
+        String email = JOptionPane.showInputDialog(this, "Enter your email for order confirmation:");
+        if (email == null || email.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "An email is required for checkout.");
+            return null;
+        }
+        return email.trim().toLowerCase();
     }
 
 
@@ -749,62 +789,56 @@ public class IPOS_PU_GUI extends JFrame {
             return;
         }
 
-        String sql = """
-            SELECT order_id, order_date, item_count, status
-            FROM orders
-            WHERE user_email = ?
-            ORDER BY order_date DESC
-        """;
-
-        try (Connection conn = DatabaseManager.getConnection();
-             java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, currentUser.getEmail());
-
-            try (java.sql.ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    String orderId = rs.getString("order_id");
-                    LocalDateTime date = LocalDateTime.parse(rs.getString("order_date"));
-                    String status = rs.getString("status");
-                    int itemCount = rs.getInt("item_count");
-
-                    List<CartItem> placeholderItems = new ArrayList<>();
-                    for (int i = 0; i < itemCount; i++) {
-                        placeholderItems.add(new CartItem(
-//                                new Product("N/A", "Previously purchased item", 0.0, 0, "Stored"),
-                                new Product("N/A", "Previously purchased item", "Stored", 0.0, 0),
-                                1
-                        ));
-                    }
-
-                    myOrders.add(new Order(orderId, placeholderItems, date, status));
-                    completedOrderCount++;
-                }
+        List<OrderService.OrderSummary> summaries = orderService.getOrdersForUser(currentUser.getEmail());
+        for (OrderService.OrderSummary summary : summaries) {
+            List<CartItem> placeholderItems = new ArrayList<>();
+            for (int i = 0; i < summary.itemCount(); i++) {
+                placeholderItems.add(new CartItem(
+                        new Product("N/A", "Previously purchased item", "Stored", 0.0, 0),
+                        1
+                ));
             }
 
-        } catch (SQLException e) {
-            e.printStackTrace();
+            myOrders.add(new Order(
+                    summary.orderId(),
+                    placeholderItems,
+                    parseOrderDateTime(summary.orderDateTime()),
+                    summary.status()
+            ));
+
+            if ("Received".equalsIgnoreCase(summary.status())
+                    || "Dispatched".equalsIgnoreCase(summary.status())
+                    || "Delivered".equalsIgnoreCase(summary.status())) {
+                completedOrderCount++;
+            }
         }
     }
 
-    private void saveOrderToDatabase(String orderId, double finalTotal, DeliveryAddress deliveryAddress, String trackingRef) {
+    private LocalDateTime parseOrderDateTime(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return LocalDateTime.now();
+        }
+        String trimmed = value.trim();
+        try {
+            return LocalDateTime.parse(trimmed);
+        } catch (Exception ignored) {
+            try {
+                return LocalDateTime.parse(trimmed.replace(" ", "T"));
+            } catch (Exception ignoredAgain) {
+                return LocalDateTime.now();
+            }
+        }
+    }
+
+    private void saveOrderToDatabase(String orderId, double finalTotal) {
         if (currentUser == null) {
             return;
         }
 
         String insertOrder = """
-            INSERT INTO orders (
-                order_id, user_email, order_date, item_count, status, total_amount,
-                delivery_name, delivery_address_line_1, delivery_address_line_2,
-                delivery_city, delivery_postcode, tracking_ref
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO orders (order_id, user_email, order_date, item_count, status, total_amount)
+            VALUES (?, ?, ?, ?, ?, ?)
         """;
-
-//        String insertOrder = """
-//            INSERT INTO orders (order_id, user_email, order_date, item_count, status, total_amount)
-//            VALUES (?, ?, ?, ?, ?, ?)
-//        """;
 
         String insertItem = """
             INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, line_total, campaign_id)
@@ -814,7 +848,7 @@ public class IPOS_PU_GUI extends JFrame {
         // Just found it would be convenient to add the payment stuff here instead of creating another method for it
 
         String insertpayments = """
-                INSERT INTO payments (payment_id, order_id, user_email, payment_date, payment_status)
+                INSERT INTO paymennts (payment_id, order_id, user_email, payment_date, payment_status)
                 VALUES (?,?,?,datetime('now'),?)
          """;
 
@@ -826,7 +860,7 @@ public class IPOS_PU_GUI extends JFrame {
 
             try (java.sql.PreparedStatement orderStmt = conn.prepareStatement(insertOrder);
                  java.sql.PreparedStatement itemStmt = conn.prepareStatement(insertItem);
-                 java.sql.PreparedStatement paymentsStmt = conn.prepareStatement(insertpayments)) {
+                java.sql.PreparedStatement paymentsStmt = conn.prepareStatement(insertpayments)) {
 
                 orderStmt.setString(1, orderId);
                 orderStmt.setString(2, currentUser.getEmail());
@@ -834,12 +868,6 @@ public class IPOS_PU_GUI extends JFrame {
                 orderStmt.setInt(4, shoppingCart.size());
                 orderStmt.setString(5, "Received");
                 orderStmt.setDouble(6, finalTotal);
-                orderStmt.setString(7, deliveryAddress.fullName);
-                orderStmt.setString(8, deliveryAddress.addressLine1);
-                orderStmt.setString(9, deliveryAddress.addressLine2);
-                orderStmt.setString(10, deliveryAddress.city);
-                orderStmt.setString(11, deliveryAddress.postcode);
-                orderStmt.setString(12, trackingRef);
                 orderStmt.executeUpdate();
 
                 for (CartItem item : shoppingCart) {
@@ -862,9 +890,9 @@ public class IPOS_PU_GUI extends JFrame {
                 paymentsStmt.setString(1, paymentId);
                 paymentsStmt.setString(2, orderId);
                 paymentsStmt.setString(3, currentUser.getEmail());
-                paymentsStmt.setString(4,  "PENDING");
+                paymentsStmt.setString(5,  "PENDING");
 
-                paymentsStmt.executeUpdate();
+                paymentsStmt.executeBatch();                
                 conn.commit();
 
             } catch (SQLException e) {
@@ -916,74 +944,6 @@ public class IPOS_PU_GUI extends JFrame {
         return bestCampaign != null ? bestCampaign.getCampaignId() : null;
     }
 
-    private DeliveryAddress promptForDeliveryAddress() {
-        JTextField fullNameField = new JTextField();
-        JTextField address1Field = new JTextField();
-        JTextField address2Field = new JTextField();
-        JTextField cityField = new JTextField();
-        JTextField postcodeField = new JTextField();
-
-        JPanel panel = new JPanel(new GridLayout(0, 1));
-        panel.add(new JLabel("Full Name:"));
-        panel.add(fullNameField);
-        panel.add(new JLabel("Address Line 1:"));
-        panel.add(address1Field);
-        panel.add(new JLabel("Address Line 2 (optional):"));
-        panel.add(address2Field);
-        panel.add(new JLabel("City:"));
-        panel.add(cityField);
-        panel.add(new JLabel("Postcode:"));
-        panel.add(postcodeField);
-
-        int result = JOptionPane.showConfirmDialog(
-                this,
-                panel,
-                "Delivery Address",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE
-        );
-
-        if (result != JOptionPane.OK_OPTION) {
-            return null;
-        }
-
-        String fullName = fullNameField.getText().trim();
-        String address1 = address1Field.getText().trim();
-        String address2 = address2Field.getText().trim();
-        String city = cityField.getText().trim();
-        String postcode = postcodeField.getText().trim();
-
-        if (fullName.isEmpty() || address1.isEmpty() || city.isEmpty() || postcode.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Please complete all required delivery address fields.",
-                    "Missing Address",
-                    JOptionPane.ERROR_MESSAGE);
-            return null;
-        }
-
-        return new DeliveryAddress(fullName, address1, address2, city, postcode);
-    }
-
-    private String buildPaidOrderPayload(DeliveryAddress deliveryAddress) {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append("DELIVERY|")
-                .append(deliveryAddress.fullName).append("|")
-                .append(deliveryAddress.addressLine1).append("|")
-                .append(deliveryAddress.addressLine2).append("|")
-                .append(deliveryAddress.city).append("|")
-                .append(deliveryAddress.postcode);
-
-        for (CartItem item : shoppingCart) {
-            sb.append("\nITEM|")
-                    .append(item.product.getId()).append("|")
-                    .append(item.product.getName()).append("|")
-                    .append(item.quantity);
-        }
-
-        return sb.toString();
-    }
-
 
     // ==================== Simple Model Classes ====================
 
@@ -1010,22 +970,6 @@ public class IPOS_PU_GUI extends JFrame {
         String status;
         Order(String id, List<CartItem> items, LocalDateTime date, String status) {
             this.id = id; this.items = items; this.date = date; this.status = status;
-        }
-    }
-
-    private static class DeliveryAddress {
-        String fullName;
-        String addressLine1;
-        String addressLine2;
-        String city;
-        String postcode;
-
-        DeliveryAddress(String fullName, String addressLine1, String addressLine2, String city, String postcode) {
-            this.fullName = fullName;
-            this.addressLine1 = addressLine1;
-            this.addressLine2 = addressLine2;
-            this.city = city;
-            this.postcode = postcode;
         }
     }
 

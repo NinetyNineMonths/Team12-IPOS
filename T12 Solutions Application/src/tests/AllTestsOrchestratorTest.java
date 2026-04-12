@@ -13,6 +13,7 @@ import tests.service.CampaignStoreTest;
 import tests.service.CatalogueServiceTest;
 import tests.service.CommercialApplicationServiceTest;
 import tests.service.MembershipServiceTest;
+import tests.service.OrderServiceTest;
 import tests.service.PromotionServiceTest;
 import tests.service.ReportServiceTest;
 import tests.ui.AdminDashboardTest;
@@ -42,6 +43,7 @@ public class AllTestsOrchestratorTest {
             CatalogueServiceTest.class,
             CommercialApplicationServiceTest.class,
             MembershipServiceTest.class,
+            OrderServiceTest.class,
             PromotionServiceTest.class,
             ReportServiceTest.class,
             PUCommsAPIImplTest.class,
