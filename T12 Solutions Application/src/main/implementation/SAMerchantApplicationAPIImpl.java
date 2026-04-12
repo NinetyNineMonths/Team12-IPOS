@@ -3,32 +3,49 @@ package main.implementation;
 import main.api.PUCommsAPI;
 import main.api.SAMerchantApplicationAPI;
 import main.db.DatabaseManager;
-import main.exception.IntegrationException;
-import main.exception.NotFoundException;
-import main.exception.ValidationException;
-import main.model.CommercialApplication;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.UUID;
 
 public class SAMerchantApplicationAPIImpl implements SAMerchantApplicationAPI {
 
     private final PUCommsAPI puCommsAPI = new PUCommsAPIImpl();
 
     @Override
-    public void submitMerchantApplication(CommercialApplication application)
-            throws ValidationException, IntegrationException {
-
-        if (application == null) {
-            throw new ValidationException("Application must not be null.");
+    public String submitMerchantApplication(String application) {
+        if (application == null || application.trim().isEmpty()) {
+            return "Application submission failed: application data is empty.";
         }
-        if (application.getApplicationId() == null || application.getApplicationId().trim().isEmpty()) {
-            throw new ValidationException("Application ID must not be empty.");
+
+        String[] parts = application.split("\\|", -1);
+
+        if (parts.length < 11) {
+            return "Application submission failed: invalid application format.";
+        }
+
+        String applicationId = "APP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        String companyName = parts[0].trim();
+        String businessType = parts[1].trim();
+        String addressLine1 = parts[2].trim();
+        String addressLine2 = parts[3].trim();
+        String city = parts[4].trim();
+        String postcode = parts[5].trim();
+        String companyHouseRegistration = parts[6].trim();
+        String directorName = parts[7].trim();
+        String directorContact = parts[8].trim();
+        String email = parts[9].trim();
+        String notificationMethod = parts[10].trim();
+
+        if (companyName.isEmpty() || businessType.isEmpty() || addressLine1.isEmpty()
+                || city.isEmpty() || postcode.isEmpty() || companyHouseRegistration.isEmpty()
+                || directorName.isEmpty() || directorContact.isEmpty()
+                || email.isEmpty() || notificationMethod.isEmpty()) {
+            return "Application submission failed: one or more required fields are empty.";
         }
 
         String sql = """
@@ -54,38 +71,38 @@ public class SAMerchantApplicationAPIImpl implements SAMerchantApplicationAPI {
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, application.getApplicationId());
-            ps.setString(2, application.getCompanyName());
-            ps.setString(3, application.getBusinessType());
-            ps.setString(4, application.getAddressLine1());
-            ps.setString(5, application.getAddressLine2());
-            ps.setString(6, application.getCity());
-            ps.setString(7, application.getPostcode());
-            ps.setString(8, application.getCompanyHouseRegistration());
-            ps.setString(9, application.getDirectorName());
-            ps.setString(10, application.getDirectorContact());
-            ps.setString(11, application.getEmail());
-            ps.setString(12, application.getNotificationMethod());
-            ps.setString(13, application.getStatus());
-            ps.setString(14, application.getSubmittedAt().toString());
+            ps.setString(1, applicationId);
+            ps.setString(2, companyName);
+            ps.setString(3, businessType);
+            ps.setString(4, addressLine1);
+            ps.setString(5, addressLine2);
+            ps.setString(6, city);
+            ps.setString(7, postcode);
+            ps.setString(8, companyHouseRegistration);
+            ps.setString(9, directorName);
+            ps.setString(10, directorContact);
+            ps.setString(11, email);
+            ps.setString(12, notificationMethod);
+            ps.setString(13, "PENDING");
+            ps.setString(14, LocalDateTime.now().toString());
 
             ps.executeUpdate();
+            return applicationId;
 
         } catch (SQLException e) {
-            throw new IntegrationException("Failed to submit merchant application.", e);
+            e.printStackTrace();
+            return "Application submission failed due to database error.";
         }
     }
 
     @Override
-    public CommercialApplication getApplicationById(String applicationId)
-            throws ValidationException, NotFoundException, IntegrationException {
-
+    public String getApplicationStatus(String applicationId) {
         if (applicationId == null || applicationId.trim().isEmpty()) {
-            throw new ValidationException("Application ID must not be empty.");
+            return "Invalid application ID.";
         }
 
         String sql = """
-            SELECT *
+            SELECT status, email, director_name, company_name, notification_method
             FROM commercial_applications
             WHERE application_id = ?
         """;
@@ -97,114 +114,94 @@ public class SAMerchantApplicationAPIImpl implements SAMerchantApplicationAPI {
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
-                    throw new NotFoundException("Commercial application not found: " + applicationId);
+                    return "Application not found.";
                 }
 
-                return mapCommercialApplication(rs);
+                String status = rs.getString("status");
+                return status;
             }
 
         } catch (SQLException e) {
-            throw new IntegrationException("Failed to retrieve merchant application.", e);
+            e.printStackTrace();
+            return "Failed to retrieve application status.";
         }
     }
 
-    @Override
-    public List<CommercialApplication> getPendingApplications()
-            throws IntegrationException {
-
-        String sql = """
-            SELECT *
-            FROM commercial_applications
-            WHERE status = 'PENDING'
-            ORDER BY submitted_at ASC
-        """;
-
-        List<CommercialApplication> applications = new ArrayList<>();
-
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                applications.add(mapCommercialApplication(rs));
-            }
-
-            return applications;
-
-        } catch (SQLException e) {
-            throw new IntegrationException("Failed to retrieve pending merchant applications.", e);
-        }
-    }
-
-    @Override
-    public void updateApplicationStatus(String applicationId, String newStatus)
-            throws ValidationException, NotFoundException, IntegrationException {
-
+    public boolean updateApplicationStatus(String applicationId, String newStatus) {
         if (applicationId == null || applicationId.trim().isEmpty()) {
-            throw new ValidationException("Application ID must not be empty.");
+            return false;
         }
         if (newStatus == null || newStatus.trim().isEmpty()) {
-            throw new ValidationException("New status must not be empty.");
+            return false;
         }
 
         String normalisedStatus = newStatus.trim().toUpperCase();
+
         if (!normalisedStatus.equals("PENDING")
                 && !normalisedStatus.equals("APPROVED")
                 && !normalisedStatus.equals("REJECTED")) {
-            throw new ValidationException("Status must be PENDING, APPROVED, or REJECTED.");
+            return false;
         }
 
-        CommercialApplication application = getApplicationById(applicationId);
+        String selectSql = """
+            SELECT email, director_name, company_name, notification_method
+            FROM commercial_applications
+            WHERE application_id = ?
+        """;
 
-        String sql = """
+        String updateSql = """
             UPDATE commercial_applications
             SET status = ?
             WHERE application_id = ?
         """;
 
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseManager.getConnection()) {
 
-            ps.setString(1, normalisedStatus);
-            ps.setString(2, applicationId.trim());
+            String email;
+            String directorName;
+            String companyName;
+            String notificationMethod;
 
-            int updated = ps.executeUpdate();
-            if (updated == 0) {
-                throw new NotFoundException("Commercial application not found: " + applicationId);
+            try (PreparedStatement selectPs = conn.prepareStatement(selectSql)) {
+                selectPs.setString(1, applicationId.trim());
+
+                try (ResultSet rs = selectPs.executeQuery()) {
+                    if (!rs.next()) {
+                        return false;
+                    }
+
+                    email = rs.getString("email");
+                    directorName = rs.getString("director_name");
+                    companyName = rs.getString("company_name");
+                    notificationMethod = rs.getString("notification_method");
+                }
             }
 
+            try (PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
+                updatePs.setString(1, normalisedStatus);
+                updatePs.setString(2, applicationId.trim());
+
+                if (updatePs.executeUpdate() == 0) {
+                    return false;
+                }
+            }
+
+            notifyApplicantIfRequired(email, directorName, companyName, notificationMethod, normalisedStatus);
+            return true;
+
         } catch (SQLException e) {
-            throw new IntegrationException("Failed to update merchant application status.", e);
+            e.printStackTrace();
+            return false;
         }
-
-        notifyApplicantIfRequired(application, normalisedStatus);
     }
 
-    private CommercialApplication mapCommercialApplication(ResultSet rs) throws SQLException {
-        return new CommercialApplication(
-                rs.getString("application_id"),
-                rs.getString("company_name"),
-                rs.getString("business_type"),
-                rs.getString("address_line_1"),
-                rs.getString("address_line_2"),
-                rs.getString("city"),
-                rs.getString("postcode"),
-                rs.getString("company_house_registration"),
-                rs.getString("director_name"),
-                rs.getString("director_contact"),
-                rs.getString("email"),
-                rs.getString("notification_method"),
-                rs.getString("status"),
-                LocalDateTime.parse(rs.getString("submitted_at"))
-        );
-    }
+    private void notifyApplicantIfRequired(String email,
+                                           String directorName,
+                                           String companyName,
+                                           String notificationMethod,
+                                           String newStatus) {
 
-    private void notifyApplicantIfRequired(CommercialApplication app, String newStatus) {
-        if (app == null) {
-            return;
-        }
-
-        if (!"Email".equalsIgnoreCase(app.getNotificationMethod())) {
+        if (!"Email".equalsIgnoreCase(notificationMethod)) {
             return;
         }
 
@@ -212,20 +209,20 @@ public class SAMerchantApplicationAPIImpl implements SAMerchantApplicationAPI {
         String body;
 
         if ("APPROVED".equalsIgnoreCase(newStatus)) {
-            body = "Dear " + app.getDirectorName() + ",\n\n"
-                    + "Your commercial application for " + app.getCompanyName()
+            body = "Dear " + directorName + ",\n\n"
+                    + "Your commercial application for " + companyName
                     + " has been approved.\n"
                     + "You may now proceed to access the IPOS-SA services.\n\n"
                     + "Regards,\nIPOS-SA";
         } else if ("REJECTED".equalsIgnoreCase(newStatus)) {
-            body = "Dear " + app.getDirectorName() + ",\n\n"
-                    + "Your commercial application for " + app.getCompanyName()
+            body = "Dear " + directorName + ",\n\n"
+                    + "Your commercial application for " + companyName
                     + " has been rejected.\n\n"
                     + "Regards,\nIPOS-SA";
         } else {
             return;
         }
 
-        puCommsAPI.sendEmail(app.getEmail(), subject, body);
+        puCommsAPI.sendEmail(email, subject, body);
     }
 }
