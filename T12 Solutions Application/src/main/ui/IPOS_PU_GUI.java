@@ -786,11 +786,22 @@ public class IPOS_PU_GUI extends JFrame {
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """;
 
+        // Just found it would be convenient to add the payment stuff here instead of creating another method for it
+
+        String insertpayments = """
+                INSERT INTO paymennts (payment_id, order_id, user_email, payment_date, payment_status)
+                VALUES (?,?,?,datetime('now'),?)
+         """;
+
+        String paymentId = " ID - " + java.util.UUID.randomUUID().toString();
+
+
         try (Connection conn = DatabaseManager.getConnection()) {
             conn.setAutoCommit(false);
 
             try (java.sql.PreparedStatement orderStmt = conn.prepareStatement(insertOrder);
-                 java.sql.PreparedStatement itemStmt = conn.prepareStatement(insertItem)) {
+                 java.sql.PreparedStatement itemStmt = conn.prepareStatement(insertItem);
+                java.sql.PreparedStatement paymentsStmt = conn.prepareStatement(insertpayments)) {
 
                 orderStmt.setString(1, orderId);
                 orderStmt.setString(2, currentUser.getEmail());
@@ -816,6 +827,13 @@ public class IPOS_PU_GUI extends JFrame {
                 }
 
                 itemStmt.executeBatch();
+
+                paymentsStmt.setString(1, paymentId);
+                paymentsStmt.setString(2, orderId);
+                paymentsStmt.setString(3, currentUser.getEmail());
+                paymentsStmt.setString(5,  "PENDING");
+
+                paymentsStmt.executeBatch();                
                 conn.commit();
 
             } catch (SQLException e) {
