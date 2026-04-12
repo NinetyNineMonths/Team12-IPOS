@@ -22,6 +22,7 @@ import main.service.PromotionService;
 import main.model.Product;
 import main.service.CatalogueService;
 import main.service.OrderService;
+import main.implementation.PUCommsAPIImpl;
 
 
 /**
@@ -40,6 +41,7 @@ public class IPOS_PU_GUI extends JFrame {
     private final PromotionService promotionService = new PromotionService();
     private final CatalogueService catalogueService = new CatalogueService();
     private final OrderService orderService = new OrderService();
+    private final PUCommsAPIImpl commsAPI = new PUCommsAPIImpl();
 
     private JTable productTable;
     private JTable cartTable;
@@ -571,6 +573,8 @@ public class IPOS_PU_GUI extends JFrame {
             return;
         }
 
+        commsAPI.sendEmail(checkoutEmail, "Order Confirmation - " + result.orderId(), "Thank you for your order.\n\nOrder ID: " + result.orderId() + "\nTotal: £" + String.format("%.2f", result.finalTotal()) + "\n\nTrack your order: http://ipos-pu.track/" + result.orderId());
+
         for (CartItem cartItem : shoppingCart) {
             List<Campaign> matchingCampaigns = getActiveCampaignsForProduct(cartItem.product.getId());
             for (Campaign campaign : matchingCampaigns) {
@@ -827,87 +831,6 @@ public class IPOS_PU_GUI extends JFrame {
             } catch (Exception ignoredAgain) {
                 return LocalDateTime.now();
             }
-        }
-    }
-
-    private void saveOrderToDatabase(String orderId, double finalTotal) {
-        if (currentUser == null) {
-            return;
-        }
-
-        String insertOrder = """
-            INSERT INTO orders (order_id, user_email, order_date, item_count, status, total_amount)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """;
-
-        String insertItem = """
-            INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, line_total, campaign_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """;
-
-        // Just found it would be convenient to add the payment stuff here instead of creating another method for it
-
-        String insertpayments = """
-                INSERT INTO paymennts (payment_id, order_id, user_email, payment_date, payment_status)
-                VALUES (?,?,?,datetime('now'),?)
-         """;
-
-        String paymentId = " ID - " + java.util.UUID.randomUUID().toString();
-
-
-        try (Connection conn = DatabaseManager.getConnection()) {
-            conn.setAutoCommit(false);
-
-            try (java.sql.PreparedStatement orderStmt = conn.prepareStatement(insertOrder);
-                 java.sql.PreparedStatement itemStmt = conn.prepareStatement(insertItem);
-                java.sql.PreparedStatement paymentsStmt = conn.prepareStatement(insertpayments)) {
-
-                orderStmt.setString(1, orderId);
-                orderStmt.setString(2, currentUser.getEmail());
-                orderStmt.setString(3, LocalDateTime.now().toString());
-                orderStmt.setInt(4, shoppingCart.size());
-                orderStmt.setString(5, "Received");
-                orderStmt.setDouble(6, finalTotal);
-                orderStmt.executeUpdate();
-
-                for (CartItem item : shoppingCart) {
-                    double unitPrice = getEffectivePrice(item.product);
-                    double lineTotal = unitPrice * item.quantity;
-                    String appliedCampaignId = getAppliedCampaignIdForProduct(item.product);
-
-                    itemStmt.setString(1, orderId);
-                    itemStmt.setString(2, item.product.getId());
-                    itemStmt.setString(3, item.product.getName());
-                    itemStmt.setInt(4, item.quantity);
-                    itemStmt.setDouble(5, unitPrice);
-                    itemStmt.setDouble(6, lineTotal);
-                    itemStmt.setString(7, appliedCampaignId);
-                    itemStmt.addBatch();
-                }
-
-                itemStmt.executeBatch();
-
-                paymentsStmt.setString(1, paymentId);
-                paymentsStmt.setString(2, orderId);
-                paymentsStmt.setString(3, currentUser.getEmail());
-                paymentsStmt.setString(5,  "PENDING");
-
-                paymentsStmt.executeBatch();                
-                conn.commit();
-
-            } catch (SQLException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this,
-                    "Failed to save order to database.",
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE);
         }
     }
 
