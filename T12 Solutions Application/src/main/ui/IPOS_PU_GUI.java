@@ -21,6 +21,8 @@ import main.service.ReportService;
 import main.service.PromotionService;
 import main.model.Product;
 import main.service.CatalogueService;
+import main.api.CAMerchantStockAPI;
+import main.implementation.CAMerchantStockAPIImpl;
 
 
 /**
@@ -505,6 +507,13 @@ public class IPOS_PU_GUI extends JFrame {
         String card = JOptionPane.showInputDialog(this, "Enter card number (demo):", "4242 4242 4242 4242");
         if (card == null || card.length() < 4) return;
 
+        DeliveryAddress deliveryAddress = promptForDeliveryAddress();
+        if (deliveryAddress == null) {
+            return;
+        }
+
+        String trackingRef = "TRK-" + System.currentTimeMillis();
+
         boolean tenthDiscountApplied = qualifiesForTenthOrderDiscount();
         double finalTotal = calculateCartTotalWithMemberDiscount();
 
@@ -527,7 +536,14 @@ public class IPOS_PU_GUI extends JFrame {
         Order newOrder = new Order(orderId, new ArrayList<>(shoppingCart), LocalDateTime.now(), "Received");
         myOrders.add(newOrder);
 
-        saveOrderToDatabase(orderId, finalTotal);
+//        saveOrderToDatabase(orderId, finalTotal);
+
+        saveOrderToDatabase(orderId, finalTotal, deliveryAddress, trackingRef);
+
+        CAMerchantStockAPI caApi = new CAMerchantStockAPIImpl();
+        String caPayload = buildPaidOrderPayload(deliveryAddress);
+        String caResult = caApi.submitPaidOrder(orderId, caPayload);
+        System.out.println(caResult);
 
         for (CartItem cartItem : shoppingCart) {
             List<Campaign> matchingCampaigns = getActiveCampaignsForProduct(cartItem.product.getId());
@@ -771,15 +787,24 @@ public class IPOS_PU_GUI extends JFrame {
         }
     }
 
-    private void saveOrderToDatabase(String orderId, double finalTotal) {
+    private void saveOrderToDatabase(String orderId, double finalTotal, DeliveryAddress deliveryAddress, String trackingRef) {
         if (currentUser == null) {
             return;
         }
 
         String insertOrder = """
-            INSERT INTO orders (order_id, user_email, order_date, item_count, status, total_amount)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO orders (
+                order_id, user_email, order_date, item_count, status, total_amount,
+                delivery_name, delivery_address_line_1, delivery_address_line_2,
+                delivery_city, delivery_postcode, tracking_ref
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """;
+
+//        String insertOrder = """
+//            INSERT INTO orders (order_id, user_email, order_date, item_count, status, total_amount)
+//            VALUES (?, ?, ?, ?, ?, ?)
+//        """;
 
         String insertItem = """
             INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, line_total, campaign_id)
@@ -809,6 +834,12 @@ public class IPOS_PU_GUI extends JFrame {
                 orderStmt.setInt(4, shoppingCart.size());
                 orderStmt.setString(5, "Received");
                 orderStmt.setDouble(6, finalTotal);
+                orderStmt.setString(7, deliveryAddress.fullName);
+                orderStmt.setString(8, deliveryAddress.addressLine1);
+                orderStmt.setString(9, deliveryAddress.addressLine2);
+                orderStmt.setString(10, deliveryAddress.city);
+                orderStmt.setString(11, deliveryAddress.postcode);
+                orderStmt.setString(12, trackingRef);
                 orderStmt.executeUpdate();
 
                 for (CartItem item : shoppingCart) {
@@ -885,6 +916,74 @@ public class IPOS_PU_GUI extends JFrame {
         return bestCampaign != null ? bestCampaign.getCampaignId() : null;
     }
 
+    private DeliveryAddress promptForDeliveryAddress() {
+        JTextField fullNameField = new JTextField();
+        JTextField address1Field = new JTextField();
+        JTextField address2Field = new JTextField();
+        JTextField cityField = new JTextField();
+        JTextField postcodeField = new JTextField();
+
+        JPanel panel = new JPanel(new GridLayout(0, 1));
+        panel.add(new JLabel("Full Name:"));
+        panel.add(fullNameField);
+        panel.add(new JLabel("Address Line 1:"));
+        panel.add(address1Field);
+        panel.add(new JLabel("Address Line 2 (optional):"));
+        panel.add(address2Field);
+        panel.add(new JLabel("City:"));
+        panel.add(cityField);
+        panel.add(new JLabel("Postcode:"));
+        panel.add(postcodeField);
+
+        int result = JOptionPane.showConfirmDialog(
+                this,
+                panel,
+                "Delivery Address",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (result != JOptionPane.OK_OPTION) {
+            return null;
+        }
+
+        String fullName = fullNameField.getText().trim();
+        String address1 = address1Field.getText().trim();
+        String address2 = address2Field.getText().trim();
+        String city = cityField.getText().trim();
+        String postcode = postcodeField.getText().trim();
+
+        if (fullName.isEmpty() || address1.isEmpty() || city.isEmpty() || postcode.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Please complete all required delivery address fields.",
+                    "Missing Address",
+                    JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+
+        return new DeliveryAddress(fullName, address1, address2, city, postcode);
+    }
+
+    private String buildPaidOrderPayload(DeliveryAddress deliveryAddress) {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("DELIVERY|")
+                .append(deliveryAddress.fullName).append("|")
+                .append(deliveryAddress.addressLine1).append("|")
+                .append(deliveryAddress.addressLine2).append("|")
+                .append(deliveryAddress.city).append("|")
+                .append(deliveryAddress.postcode);
+
+        for (CartItem item : shoppingCart) {
+            sb.append("\nITEM|")
+                    .append(item.product.getId()).append("|")
+                    .append(item.product.getName()).append("|")
+                    .append(item.quantity);
+        }
+
+        return sb.toString();
+    }
+
 
     // ==================== Simple Model Classes ====================
 
@@ -911,6 +1010,22 @@ public class IPOS_PU_GUI extends JFrame {
         String status;
         Order(String id, List<CartItem> items, LocalDateTime date, String status) {
             this.id = id; this.items = items; this.date = date; this.status = status;
+        }
+    }
+
+    private static class DeliveryAddress {
+        String fullName;
+        String addressLine1;
+        String addressLine2;
+        String city;
+        String postcode;
+
+        DeliveryAddress(String fullName, String addressLine1, String addressLine2, String city, String postcode) {
+            this.fullName = fullName;
+            this.addressLine1 = addressLine1;
+            this.addressLine2 = addressLine2;
+            this.city = city;
+            this.postcode = postcode;
         }
     }
 
