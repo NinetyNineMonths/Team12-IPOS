@@ -41,6 +41,7 @@ public class CatalogueService {
         return products;
     }
 
+
     public boolean reduceStock(String productId, int quantity) {
         String sql = """
             UPDATE products

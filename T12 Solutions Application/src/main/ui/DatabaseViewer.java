@@ -31,7 +31,8 @@ public class DatabaseViewer extends JFrame {
                 "campaign_items",
                 "campaign_metrics",
                 "campaign_item_metrics",
-                "commercial_applications"
+                "commercial_applications",
+                "products"
         });
 
         JButton loadButton = new JButton("Load");
