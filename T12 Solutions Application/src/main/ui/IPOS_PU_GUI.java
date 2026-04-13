@@ -478,7 +478,7 @@ public class IPOS_PU_GUI extends JFrame {
     }
 
     private boolean qualifiesForTenthOrderDiscount() {
-        if (currentUser == null) {
+        if (currentUser == null || !currentUser.isCustomer()) {
             return false;
         }
 
