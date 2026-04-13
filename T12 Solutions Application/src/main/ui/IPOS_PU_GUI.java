@@ -540,20 +540,20 @@ public class IPOS_PU_GUI extends JFrame {
             ));
         }
 
-        for (CartItem cartItem : shoppingCart) {
-            boolean stockUpdated = catalogueService.reduceStock(cartItem.product.getId(), cartItem.quantity);
-
-            if (!stockUpdated) {
-                JOptionPane.showMessageDialog(this,
-                        "Not enough stock available for " + cartItem.product.getName() + ".",
-                        "Stock Error",
-                        JOptionPane.ERROR_MESSAGE);
-                loadCatalogueFromDatabase();
-                refreshBrowseView();
-                refreshCartTable();
-                return;
-            }
-        }
+//        for (CartItem cartItem : shoppingCart) {
+//            boolean stockUpdated = catalogueService.reduceStock(cartItem.product.getId(), cartItem.quantity);
+//
+//            if (!stockUpdated) {
+//                JOptionPane.showMessageDialog(this,
+//                        "Not enough stock available for " + cartItem.product.getName() + ".",
+//                        "Stock Error",
+//                        JOptionPane.ERROR_MESSAGE);
+//                loadCatalogueFromDatabase();
+//                refreshBrowseView();
+//                refreshCartTable();
+//                return;
+//            }
+//        }
 
         boolean nonCommercialMember = currentUser != null && currentUser.isCustomer();
         OrderService.CheckoutResult result = orderService.checkoutOrder(
@@ -573,7 +573,22 @@ public class IPOS_PU_GUI extends JFrame {
             return;
         }
 
-        commsAPI.sendEmail(checkoutEmail, "Order Confirmation - " + result.orderId(), "Thank you for your order.\n\nOrder ID: " + result.orderId() + "\nTotal: £" + String.format("%.2f", result.finalTotal()) + "\n\nTrack your order: http://ipos-pu.track/" + result.orderId());
+        for (CartItem cartItem : shoppingCart) {
+            boolean stockUpdated = catalogueService.reduceStock(cartItem.product.getId(), cartItem.quantity);
+
+            if (!stockUpdated) {
+                JOptionPane.showMessageDialog(this,
+                        "Not enough stock available for " + cartItem.product.getName() + ".",
+                        "Stock Error",
+                        JOptionPane.ERROR_MESSAGE);
+                loadCatalogueFromDatabase();
+                refreshBrowseView();
+                refreshCartTable();
+                return;
+            }
+        }
+
+//        commsAPI.sendEmail(checkoutEmail, "Order Confirmation - " + result.orderId(), "Thank you for your order.\n\nOrder ID: " + result.orderId() + "\nTotal: £" + String.format("%.2f", result.finalTotal()) + "\n\nTrack your order: http://ipos-pu.track/" + result.orderId());
 
         for (CartItem cartItem : shoppingCart) {
             List<Campaign> matchingCampaigns = getActiveCampaignsForProduct(cartItem.product.getId());
