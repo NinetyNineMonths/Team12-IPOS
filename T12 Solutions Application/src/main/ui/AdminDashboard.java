@@ -401,8 +401,9 @@ public class AdminDashboard extends JFrame {
             itemsText.append(item.getItemId()).append(":").append(item.getDiscountRate());
         }
 
-        JTextArea itemsArea = new JTextArea(5, 25);
-        itemsArea.setText(itemsText.toString());
+        JTextField itemsField = new JTextField(itemsText.toString());
+//        JTextArea itemsArea = new JTextArea(5, 25);
+//        itemsArea.setText(itemsText.toString());
 
         JPanel panel = new JPanel(new GridLayout(0, 1));
         panel.add(new JLabel("Start Date (YYYY-MM-DD):"));
@@ -415,7 +416,8 @@ public class AdminDashboard extends JFrame {
         panel.add(discountTypeField);
 
         panel.add(new JLabel("Items (PRODUCT_ID:DISCOUNT, comma separated):"));
-        panel.add(new JScrollPane(itemsArea));
+        panel.add(itemsField);
+//        panel.add(new JScrollPane(itemsArea));
 
         int result = JOptionPane.showConfirmDialog(
                 this,
@@ -440,7 +442,8 @@ public class AdminDashboard extends JFrame {
                 LocalDateTime start = startDate.atStartOfDay();
                 LocalDateTime end = endDate.atTime(23, 59);
                 String discountType = discountTypeField.getText().trim();
-                List<CampaignItem> items = buildCampaignItemsFromInput(itemsArea.getText());
+                List<CampaignItem> items = buildCampaignItemsFromInput(itemsField.getText());
+//                List<CampaignItem> items = buildCampaignItemsFromInput(itemsArea.getText());
 
                 String conflictMessage = detectConflictMessage(existing.getCampaignId(), start, end, items);
                 if (conflictMessage != null) {
