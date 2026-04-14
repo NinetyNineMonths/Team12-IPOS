@@ -147,7 +147,8 @@ public class AdminDashboard extends JFrame {
         JTextField startField = new JTextField("2026-04-01");
         JTextField endField = new JTextField("2026-04-30");
         JTextField discountTypeField = new JTextField("Percentage");
-        JTextField itemsField = new JTextField("PARA001:15, VIT003:10");
+        JTextField itemsField = new JTextField("10000001:15, 40000001:10");
+//        JTextField itemsField = new JTextField("PARA001:15, VIT003:10");
 
         JPanel panel = new JPanel(new GridLayout(0, 1));
 

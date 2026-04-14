@@ -168,7 +168,8 @@ public class IPOS_PU_GUI extends JFrame {
         panel.add(searchPanel, BorderLayout.NORTH);
 
         // Product table
-        String[] columns = {"ID", "Product", "Price (£)", "Stock", "Category"};
+        String[] columns = {"ID", "Product", "Package", "Unit", "Pack Size", "Price (£)", "Stock"};
+//        String[] columns = {"ID", "Product", "Price (£)", "Stock", "Category"};
         productTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
@@ -200,12 +201,27 @@ public class IPOS_PU_GUI extends JFrame {
 
         List<Product> filtered = catalogue.stream()
                 .filter(p -> p.getName().toLowerCase().contains(keyword)
-                        || p.getCategory().toLowerCase().contains(keyword))
+                        || p.getDescription().toLowerCase().contains(keyword)
+                        || p.getId().toLowerCase().contains(keyword))
                 .toList();
 
         refreshProductTable(filtered);
     }
 
+//    private void performSearch(ActionEvent e) {
+//        String keyword = searchField.getText().trim().toLowerCase();
+//        if (keyword.isEmpty()) {
+//            refreshProductTable(catalogue);
+//            return;
+//        }
+//
+//        List<Product> filtered = catalogue.stream()
+//                .filter(p -> p.getName().toLowerCase().contains(keyword)
+//                        || p.getCategory().toLowerCase().contains(keyword))
+//                .toList();
+//
+//        refreshProductTable(filtered);
+//    }
 
     private void refreshProductTable(List<Product> products) {
         productTableModel.setRowCount(0);
@@ -218,12 +234,33 @@ public class IPOS_PU_GUI extends JFrame {
             productTableModel.addRow(new Object[]{
                     p.getId(),
                     p.getName(),
+                    p.getPackageType(),
+                    p.getUnitType(),
+                    p.getPackSize(),
                     String.format("%.2f", displayPrice),
-                    stockText,
-                    p.getCategory()
+                    stockText
             });
         }
     }
+
+
+//    private void refreshProductTable(List<Product> products) {
+//        productTableModel.setRowCount(0);
+//
+//        for (Product p : products) {
+//            double displayPrice = getEffectivePrice(p);
+//            int availableStock = getAvailableStock(p);
+//            String stockText = availableStock > 0 ? String.valueOf(availableStock) : "Out of stock";
+//
+//            productTableModel.addRow(new Object[]{
+//                    p.getId(),
+//                    p.getName(),
+//                    String.format("%.2f", displayPrice),
+//                    stockText,
+//                    p.getCategory()
+//            });
+//        }
+//    }
 
 
     private void addSelectedToCart() {
@@ -306,12 +343,12 @@ public class IPOS_PU_GUI extends JFrame {
     }
 
     private double getEffectivePrice(Product product) {
-        double bestPrice = product.getPrice();
+        double bestPrice = product.getRetailPrice();
 
         for (Campaign campaign : CampaignStore.getActiveCampaigns()) {
             for (CampaignItem item : campaign.getItems()) {
                 if (item.getItemId().equals(product.getId())) {
-                    double discounted = product.getPrice() * (1 - item.getDiscountRate() / 100.0);
+                    double discounted = product.getRetailPrice() * (1 - item.getDiscountRate() / 100.0);
                     if (discounted < bestPrice) {
                         bestPrice = discounted;
                     }
@@ -321,6 +358,23 @@ public class IPOS_PU_GUI extends JFrame {
 
         return bestPrice;
     }
+
+//    private double getEffectivePrice(Product product) {
+//        double bestPrice = product.getPrice();
+//
+//        for (Campaign campaign : CampaignStore.getActiveCampaigns()) {
+//            for (CampaignItem item : campaign.getItems()) {
+//                if (item.getItemId().equals(product.getId())) {
+//                    double discounted = product.getPrice() * (1 - item.getDiscountRate() / 100.0);
+//                    if (discounted < bestPrice) {
+//                        bestPrice = discounted;
+//                    }
+//                }
+//            }
+//        }
+//
+//        return bestPrice;
+//    }
 
     private int getQuantityInCart(Product product) {
         CartItem item = findCartItem(product);
@@ -343,11 +397,25 @@ public class IPOS_PU_GUI extends JFrame {
         } else {
             List<Product> filtered = catalogue.stream()
                     .filter(p -> p.getName().toLowerCase().contains(keyword)
-                            || p.getCategory().toLowerCase().contains(keyword))
+                            || p.getDescription().toLowerCase().contains(keyword)
+                            || p.getId().toLowerCase().contains(keyword))
                     .toList();
 
             refreshProductTable(filtered);
         }
+
+//        String keyword = (searchField == null) ? "" : searchField.getText().trim().toLowerCase();
+//
+//        if (keyword.isEmpty()) {
+//            refreshProductTable(catalogue);
+//        } else {
+//            List<Product> filtered = catalogue.stream()
+//                    .filter(p -> p.getName().toLowerCase().contains(keyword)
+//                            || p.getCategory().toLowerCase().contains(keyword))
+//                    .toList();
+//
+//            refreshProductTable(filtered);
+//        }
 
         refreshPromotionsView();
     }
@@ -813,7 +881,8 @@ public class IPOS_PU_GUI extends JFrame {
             List<CartItem> placeholderItems = new ArrayList<>();
             for (int i = 0; i < summary.itemCount(); i++) {
                 placeholderItems.add(new CartItem(
-                        new Product("N/A", "Previously purchased item", "Stored", 0.0, 0),
+//                        new Product("N/A", "Previously purchased item", "Stored", 0.0, 0),
+                        new Product("N/A", "Previously purchased item", "Stored product", "Box", "Caps", 1, 0.0, 0.0, 0, 0),
                         1
                 ));
             }
@@ -865,12 +934,12 @@ public class IPOS_PU_GUI extends JFrame {
 
     private String getAppliedCampaignIdForProduct(Product product) {
         Campaign bestCampaign = null;
-        double bestPrice = product.getPrice();
+        double bestPrice = product.getRetailPrice();
 
         for (Campaign campaign : CampaignStore.getActiveCampaigns()) {
             for (CampaignItem item : campaign.getItems()) {
                 if (item.getItemId().equalsIgnoreCase(product.getId())) {
-                    double discounted = product.getPrice() * (1 - item.getDiscountRate() / 100.0);
+                    double discounted = product.getRetailPrice() * (1 - item.getDiscountRate() / 100.0);
                     if (discounted < bestPrice) {
                         bestPrice = discounted;
                         bestCampaign = campaign;
@@ -881,6 +950,25 @@ public class IPOS_PU_GUI extends JFrame {
 
         return bestCampaign != null ? bestCampaign.getCampaignId() : null;
     }
+
+//    private String getAppliedCampaignIdForProduct(Product product) {
+//        Campaign bestCampaign = null;
+//        double bestPrice = product.getPrice();
+//
+//        for (Campaign campaign : CampaignStore.getActiveCampaigns()) {
+//            for (CampaignItem item : campaign.getItems()) {
+//                if (item.getItemId().equalsIgnoreCase(product.getId())) {
+//                    double discounted = product.getPrice() * (1 - item.getDiscountRate() / 100.0);
+//                    if (discounted < bestPrice) {
+//                        bestPrice = discounted;
+//                        bestCampaign = campaign;
+//                    }
+//                }
+//            }
+//        }
+//
+//        return bestCampaign != null ? bestCampaign.getCampaignId() : null;
+//    }
 
 
     // ==================== Simple Model Classes ====================
