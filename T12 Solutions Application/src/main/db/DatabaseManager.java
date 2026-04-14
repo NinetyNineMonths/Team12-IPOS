@@ -217,7 +217,9 @@ public class DatabaseManager {
                 conn.createStatement().execute("""
                     INSERT INTO users VALUES
                     ('customer@ipos.com', 'Test Customer', 'Test123!', 'CUSTOMER', 1),
-                    ('admin@ipos.com',    'System Admin',  'Admin123!', 'ADMIN',   0)
+                    ('admin@ipos.com',    'System Admin',  'Admin123!', 'ADMIN',   0),
+                    ('sysdba', 'Administrator', 'masterkey', 'ADMIN', 0),
+                    ('manager', 'PU-Admin', 'GetPU_it_done', 'ADMIN', 0)
                     """);
             }
         }
