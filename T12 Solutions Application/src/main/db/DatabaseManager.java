@@ -93,12 +93,6 @@ public class DatabaseManager {
                 item_count    INTEGER NOT NULL,
                 status        TEXT    NOT NULL,
                 total_amount  REAL    NOT NULL,
-                delivery_name             TEXT,
-                delivery_address_line_1   TEXT,
-                delivery_address_line_2   TEXT,
-                delivery_city             TEXT,
-                delivery_postcode         TEXT,
-                tracking_ref              TEXT,
                 FOREIGN KEY (user_email) REFERENCES users(email)
             );
         """;
