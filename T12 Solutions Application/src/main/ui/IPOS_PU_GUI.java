@@ -443,7 +443,8 @@ public class IPOS_PU_GUI extends JFrame {
                 sb.append("Items:\n");
 
                 for (CampaignItem item : c.getItems()) {
-                    sb.append(" - ").append(item.getItemId())
+                    sb.append(" - ").append(getProductName(item.getItemId()))
+//                    sb.append(" - ").append(item.getItemId())
                             .append(" : ").append(item.getDiscountRate()).append("% off\n");
                 }
 
@@ -949,6 +950,14 @@ public class IPOS_PU_GUI extends JFrame {
         }
 
         return bestCampaign != null ? bestCampaign.getCampaignId() : null;
+    }
+
+    private String getProductName(String productId) {
+        return catalogue.stream()
+                .filter(p -> p.getId().equalsIgnoreCase(productId))
+                .map(Product::getName)
+                .findFirst()
+                .orElse(productId);
     }
 
 //    private String getAppliedCampaignIdForProduct(Product product) {

@@ -5,6 +5,7 @@ import main.db.DatabaseManager;
 import main.model.*;
 import main.service.CampaignStore;
 import main.service.PromotionService;
+import main.service.CatalogueService;
 
 import javax.swing.*;
 import java.awt.*;
@@ -309,7 +310,8 @@ public class AdminDashboard extends JFrame {
 
             for (CampaignItem item : c.getItems()) {
                 sb.append(" - ")
-                        .append(item.getItemId())
+                        .append(getProductName(item.getItemId()))
+//                        .append(item.getItemId())
                         .append(" : ")
                         .append(item.getDiscountRate())
                         .append("% off\n");
@@ -319,6 +321,16 @@ public class AdminDashboard extends JFrame {
         }
 
         outputArea.setText(sb.toString());
+    }
+
+    private String getProductName(String productId) {
+        CatalogueService catalogueService = new CatalogueService();
+
+        return catalogueService.getAllProducts().stream()
+                .filter(p -> p.getId().equalsIgnoreCase(productId))
+                .map(Product::getName)
+                .findFirst()
+                .orElse(productId);
     }
 
     private void cancelCampaign() {
