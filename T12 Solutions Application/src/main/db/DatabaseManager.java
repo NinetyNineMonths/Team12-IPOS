@@ -145,6 +145,7 @@ public class DatabaseManager {
         """;
         
         String paymentInfo = """
+                CREATE VIEW IF NOT EXISTS payInfo AS
                 SELECT p.payment_id,
                        u.full_name,
                        u.email,
