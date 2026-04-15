@@ -39,7 +39,7 @@ public class DatabaseViewerTest {
         try {
             List<JComboBox> selectors = UiTestUtils.findAllOfType(frame, JComboBox.class);
             assertEquals(1, selectors.size());
-            assertEquals(10, selectors.get(0).getItemCount());
+            assertEquals(11, selectors.get(0).getItemCount());
             boolean hasProductsOption = false;
             boolean hasPaymentsOption = false;
             for (int i = 0; i < selectors.get(0).getItemCount(); i++) {
