@@ -238,7 +238,7 @@ public class DatabaseManager {
                 ('10000006', 'Retin-A Tretin, 30 g', 'Retin-A Tretin, 30 g', 'Box', 'Caps', 20, 25.00, 50.00, 28, 10),
                 ('10000007', 'Lipitor TB, 20 mg', 'Lipitor TB, 20 mg', 'Box', 'Caps', 30, 15.50, 31.00, 10, 10),
                 ('10000008', 'Claritin CR, 60g', 'Claritin CR, 60g', 'Box', 'Caps', 20, 19.50, 39.00, 21, 10),
-                ('20000004', 'Iodine tincture', 'Iodine tincture', 'Bottle', 'Ml', 100, 0.30, 0.60, 35, 10),
+                ('20000004', 'Iodine Tincture', 'Iodine Tincture', 'Bottle', 'Ml', 100, 0.30, 0.60, 35, 10),
                 ('20000005', 'Rhynol', 'Rhynol', 'Bottle', 'Ml', 200, 2.50, 5.00, 14, 15),
                 ('30000001', 'Ospen', 'Ospen', 'Box', 'Caps', 20, 10.50, 21.00, 78, 10),
                 ('30000002', 'Amopen', 'Amopen', 'Box', 'Caps', 30, 15.00, 30.00, 90, 15),
