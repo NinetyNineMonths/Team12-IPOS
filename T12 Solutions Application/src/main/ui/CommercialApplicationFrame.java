@@ -1,5 +1,6 @@
 package main.ui;
 
+import main.db.SAApplicationDbAdapter;
 import main.model.CommercialApplication;
 import main.service.AuthService;
 import main.service.CommercialApplicationService;
@@ -111,18 +112,19 @@ public class CommercialApplicationFrame extends JFrame {
     }
 
     private void handleSubmit() {
-        String companyName = companyNameField.getText().trim();
-        String businessType = businessTypeField.getText().trim();
-        String addressLine1 = addressLine1Field.getText().trim();
-        String addressLine2 = addressLine2Field.getText().trim();
-        String city = cityField.getText().trim();
-        String postcode = postcodeField.getText().trim();
+        String companyName              = companyNameField.getText().trim();
+        String businessType             = businessTypeField.getText().trim();
+        String addressLine1             = addressLine1Field.getText().trim();
+        String addressLine2             = addressLine2Field.getText().trim();
+        String city                     = cityField.getText().trim();
+        String postcode                 = postcodeField.getText().trim();
         String companyHouseRegistration = companyHouseField.getText().trim();
-        String directorName = directorNameField.getText().trim();
-        String directorContact = directorContactField.getText().trim();
-        String email = emailField.getText().trim().toLowerCase();
-        String notificationMethod = (String) notificationMethodBox.getSelectedItem();
+        String directorName             = directorNameField.getText().trim();
+        String directorContact          = directorContactField.getText().trim();
+        String email                    = emailField.getText().trim().toLowerCase();
+        String notificationMethod       = (String) notificationMethodBox.getSelectedItem();
 
+        // Validate required fields
         if (companyName.isEmpty() || businessType.isEmpty() || addressLine1.isEmpty()
                 || city.isEmpty() || postcode.isEmpty() || companyHouseRegistration.isEmpty()
                 || directorName.isEmpty() || directorContact.isEmpty() || email.isEmpty()) {
@@ -165,6 +167,7 @@ public class CommercialApplicationFrame extends JFrame {
         );
 
         try {
+            // Check for duplicates in PU's local database first
             if (applicationService.emailExistsForApplication(email)) {
                 JOptionPane.showMessageDialog(
                         this,
@@ -185,13 +188,36 @@ public class CommercialApplicationFrame extends JFrame {
                 return;
             }
 
+            // Step 1 — save locally to PU's own SQLite database
             applicationService.saveApplication(application);
+
+            // Step 2 — forward to SA's shared PostgreSQL database.
+            // SA will review, update status, and send the outcome email via their own system.
+            // PU does NOT send the approval/rejection email — SA handles that.
+            SAApplicationDbAdapter saAdapter = new SAApplicationDbAdapter();
+            SAApplicationDbAdapter.SubmitResult saResult = saAdapter.submitApplication(application);
+
+            String successMessage = "Commercial application submitted successfully.\n\n"
+                    + "Application ID: " + applicationId + "\n"
+                    + "Status: PENDING\n";
+
+            switch (saResult) {
+                case SUCCESS ->
+                    successMessage += "\nForwarded to InfoPharma (SA) for review.\n"
+                            + "You will be notified of the outcome by " + notificationMethod + ".";
+                case ALREADY_EXISTS ->
+                    successMessage += "\nNote: Application already on record with SA.";
+                case INVALID_INPUT ->
+                    successMessage += "\nNote: Application data was invalid — saved locally only.";
+                default ->
+                    // DB_UNAVAILABLE — SA unreachable, but PU saved locally so no data is lost
+                    successMessage += "\nNote: Could not reach SA system right now.\n"
+                            + "Your application has been saved locally.";
+            }
 
             JOptionPane.showMessageDialog(
                     this,
-                    "Commercial application submitted successfully.\n\n" +
-                            "Application ID: " + applicationId + "\n" +
-                            "Status: PENDING",
+                    successMessage,
                     "Application Submitted",
                     JOptionPane.INFORMATION_MESSAGE
             );
