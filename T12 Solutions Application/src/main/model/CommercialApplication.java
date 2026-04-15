@@ -49,18 +49,51 @@ public class CommercialApplication {
         this.submittedAt = submittedAt;
     }
 
-    public String getApplicationId() { return applicationId; }
-    public String getCompanyName() { return companyName; }
-    public String getBusinessType() { return businessType; }
-    public String getAddressLine1() { return addressLine1; }
-    public String getAddressLine2() { return addressLine2; }
-    public String getCity() { return city; }
-    public String getPostcode() { return postcode; }
-    public String getCompanyHouseRegistration() { return companyHouseRegistration; }
-    public String getDirectorName() { return directorName; }
-    public String getDirectorContact() { return directorContact; }
-    public String getEmail() { return email; }
-    public String getNotificationMethod() { return notificationMethod; }
-    public String getStatus() { return status; }
-    public LocalDateTime getSubmittedAt() { return submittedAt; }
+    public String getApplicationId() { 
+        return applicationId;
+     }
+    public String getCompanyName(){ 
+        return companyName; 
+    }
+    public String getBusinessType() { 
+        return businessType;
+     }
+    public String getAddressLine1() { 
+        return addressLine1;
+     }
+    public String getAddressLine2() { 
+        return addressLine2; 
+    }
+    public String getCity() { 
+        return city;
+     }
+    public String getPostcode() {
+         return postcode; 
+    }
+    public String getCompanyHouseRegistration() { 
+        return companyHouseRegistration; 
+    }
+    public String getDirectorName() { 
+        return directorName;
+    }
+    public String getDirectorContact() { 
+        return directorContact; 
+    }
+    public String getEmail() { 
+        return email; 
+    }
+    public String getNotificationMethod() { 
+        return notificationMethod; 
+    }
+    public String getStatus() { 
+        return status; 
+    }
+    public LocalDateTime getSubmittedAt() { 
+        return submittedAt; 
+    }
+
+    @Override
+    public String toString() {
+        return "CommercialApplication[id=" + applicationId + ", company=" + companyName + ", status=" + status + ", submitted=" + (submittedAt != null ? submittedAt.toLocalDate() : "unknown") + "]";
+    }
 }
