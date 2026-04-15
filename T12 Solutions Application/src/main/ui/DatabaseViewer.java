@@ -33,7 +33,8 @@ public class DatabaseViewer extends JFrame {
                 "campaign_item_metrics",
                 "commercial_applications",
                 "products",
-                "payments"
+                "payments",
+                "payInfo"
         });
 
         JButton loadButton = new JButton("Load");
