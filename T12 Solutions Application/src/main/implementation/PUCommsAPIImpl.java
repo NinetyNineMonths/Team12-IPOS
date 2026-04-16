@@ -1,89 +1,128 @@
 package main.implementation;
 
 import main.api.PUCommsAPI;
+import main.config.EmailConfig;
+
+import jakarta.mail.*;
+import jakarta.mail.internet.*;
 
 import java.time.LocalDateTime;
+import java.util.Properties;
+
 
 public class PUCommsAPIImpl implements PUCommsAPI {
 
     public PUCommsAPIImpl() {
     }
-
     /**
-      Simulates sending an email by printing details
-      Returns false if the recipient address or body is null or empty.
-      @param to      email address
-      @param subject the email subject line
-      @param body    the body text
+     * Sends an email via Gmail SMTP if credentials are configured in EmailConfig.
      */
+
     @Override
     public boolean sendEmail(String to, String subject, String body) {
-        if (to == null || to.trim().isEmpty() || body == null || body.trim().isEmpty()) {
-            System.out.println("[EMAIL] Failed: recipient or body is missing.");
+        if (to == null || to.trim().isEmpty()) {
+            System.out.println("[EMAIL] Failed: recipient address is missing.");
             return false;
         }
-        System.out.println("[EMAIL] To: " + to);
-        System.out.println("[EMAIL] Subject: " + subject);
-        System.out.println("[EMAIL] Body: " + body);
-        recordTransaction("EMAIL_" + System.currentTimeMillis(), "email", "success",
-                LocalDateTime.now().toString());
-        return true;
+        if (body == null || body.trim().isEmpty()) {
+            System.out.println("[EMAIL] Failed: email body is missing.");
+            return false;
+        }
+
+        if (!EmailConfig.isConfigured()) {
+            logToConsole(to, subject, body, "SMTP not configured — logged locally");
+            return true;
+        }
+
+        try {
+            Properties props = new Properties();
+            props.put("mail.smtp.host",            EmailConfig.SMTP_HOST);
+            props.put("mail.smtp.port",            EmailConfig.SMTP_PORT);
+            props.put("mail.smtp.auth",            "true");
+            props.put("mail.smtp.starttls.enable", "true");
+
+            Session session = Session.getInstance(props, new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(
+                            EmailConfig.FROM_ADDRESS,
+                            EmailConfig.FROM_PASSWORD
+                    );
+                }
+            });
+
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(EmailConfig.FROM_ADDRESS));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to.trim()));
+            message.setSubject(subject != null ? subject : "(no subject)");
+            message.setText(body);
+
+            Transport.send(message);
+
+            System.out.println("[EMAIL] Sent → " + to + " | Subject: " + subject);
+            recordTransaction("EMAIL_" + System.currentTimeMillis(), "email", "sent",
+                    LocalDateTime.now().toString());
+            return true;
+
+        } catch (MessagingException e) {
+            logToConsole(to, subject, body, "SMTP error: " + e.getMessage());
+            return true; // fallback — email logged, app continues normally
+        }
     }
 
     /**
-      Full payment authorisation with card number validation.
-      Validates orderId, amount, and card number before simulating authorisation. Card number must be at least 12 digits. Only the last 4 digits are shown in the output.
-      Returns false if any input is invalid.
-      @param orderId    the unique ID of the order being paid for
-      @param amount     the total amount to charge
-      @param cardNumber the customer's card number
+     * Validates and records a card payment for an order.
+     * @param orderId    the unique order ID
+     * @param amount     charge amount in GBP — must be greater than 0
+     * @param cardNumber customer card number — must be at least 12 digits
      */
+
     public boolean authorisePayment(String orderId, double amount, String cardNumber) {
         if (orderId == null || orderId.trim().isEmpty()) {
-            System.out.println("[PAYMENT] Failed: orderId is null or empty.");
+            System.out.println("[PAYMENT] Declined: orderId is missing.");
             return false;
         }
         if (amount <= 0) {
-            System.out.println("[PAYMENT] Failed: amount must be greater than 0.");
+            System.out.println("[PAYMENT] Declined: amount must be greater than 0.");
             return false;
         }
         if (cardNumber == null || cardNumber.replaceAll("\\s", "").length() < 12) {
-            System.out.println("[PAYMENT] Failed: card number is invalid.");
+            System.out.println("[PAYMENT] Declined: card number must be at least 12 digits.");
             return false;
         }
-        // Mask card: show only last 4 digits
+
         String digits = cardNumber.replaceAll("\\s", "");
         String masked = "**** **** **** " + digits.substring(digits.length() - 4);
+
         System.out.println("[PAYMENT] Authorised: Order " + orderId
                 + " | Amount: £" + String.format("%.2f", amount)
                 + " | Card: " + masked);
-        recordTransaction("PAY_" + orderId, "payment", "success",
+
+        recordTransaction("PAY_" + orderId, "payment", "authorised",
                 LocalDateTime.now().toString());
         return true;
     }
 
-    /**
-      Delegates to the full three-argument version.
-      @param orderId the unique ID of the order being paid for
-      @param amount  the total amount to charge in GBP; must be greater than 0
-     */
     @Override
     public boolean authorisePayment(String orderId, double amount) {
         return authorisePayment(orderId, amount, "000000000000");
     }
 
-    /**
-     * Records a transaction to the console (prototype substitute for database logging).
-      @param refId     a unique reference ID
-      @param type      type of transaction
-      @param outcome   result
-      @param timestamp date and time of the transaction
-     */
     @Override
     public void recordTransaction(String refId, String type, String outcome, String timestamp) {
         System.out.println("[TRANSACTION] Ref: " + refId
                 + " | Type: " + type
                 + " | Outcome: " + outcome
                 + " | Time: " + timestamp);
+    }
+
+
+    private void logToConsole(String to, String subject, String body, String reason) {
+        System.out.println("[EMAIL] " + reason);
+        System.out.println("[EMAIL] To:      " + to);
+        System.out.println("[EMAIL] Subject: " + subject);
+        System.out.println("[EMAIL] Body:    " + body);
+        recordTransaction("EMAIL_" + System.currentTimeMillis(), "email", reason,
+                LocalDateTime.now().toString());
     }
 }
