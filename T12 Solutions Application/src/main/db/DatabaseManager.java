@@ -199,6 +199,7 @@ public class DatabaseManager {
             stmt.execute(paymentsTable);
             stmt.execute(paymentInfo);
             seedUsersIfEmpty(conn);
+            seedScenarioUsers(conn);
             seedProductsIfEmpty(conn);
         } catch (SQLException e) {
             throw new RuntimeException("DB init failed", e);
@@ -218,6 +219,15 @@ public class DatabaseManager {
                     """);
             }
         }
+    }
+
+    private static void seedScenarioUsers(Connection conn) throws SQLException {
+        conn.createStatement().execute("""
+            INSERT OR IGNORE INTO users (email, full_name, password, role, first_login) VALUES
+            ('cool@example.com', 'PU0001', '12ss_56_SS', 'CUSTOMER', 0),
+            ('cool1@example.com', 'PU0002', '34pp_78_LL', 'CUSTOMER', 0),
+            ('peter.popov@example.com', 'Peter Popov', 'DemoUser1!', 'CUSTOMER', 0)
+        """);
     }
 
 
