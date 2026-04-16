@@ -3,7 +3,6 @@ package main.ui;
 import main.service.AuthService;
 import main.api.PUCommsAPI;
 import main.implementation.PUCommsAPIImpl;
-import main.ui.WelcomeFrame;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -62,42 +61,48 @@ public class NonCommercialRegistrationFrame extends JFrame {
         String name = nameField.getText().trim();
         String email = emailField.getText().trim();
 
+        if (name.isEmpty() || email.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Please enter both your name and email address.",
+                    "Validation Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         String tempPassword = authService.registerNonCommercialMember(name, email);
 
         if (tempPassword == null) {
             JOptionPane.showMessageDialog(this,
-                    "Registration failed. Email may already exist or fields are invalid.",
+                    "Registration failed. This email may already be registered.",
                     "Error",
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
 
+        // Send welcome email with temporary password
         PUCommsAPI comms = new PUCommsAPIImpl();
-
         comms.sendEmail(
                 email,
                 "Your IPOS-PU Login Details",
-                "Welcome to IPOS-PU!\n\n" +
-                        "Username: " + email + "\n" +
-                        "Temporary Password: " + tempPassword + "\n\n" +
-                        "You will be required to change your password on first login."
+                "Welcome to IPOS-PU!\n\n"
+                        + "Your account has been created.\n\n"
+                        + "Username: " + email + "\n"
+                        + "Temporary Password: " + tempPassword + "\n\n"
+                        + "You will be required to change your password on first login.\n\n"
+                        + "Thank you for registering with IPOS-PU."
         );
 
+        // Show success dialog
         JOptionPane.showMessageDialog(this,
-                "Registration successful!\n\n" +
-                        "A login email has been generated.\n" +
-                        "Temporary password: " + tempPassword + "\n\n" +
-                        "You will be asked to change it on first login.",
-                "Success",
+                "Registration successful!\n\n"
+                        + "A confirmation email has been sent to:\n" + email + "\n\n"
+                        + "Temporary password: " + tempPassword + "\n\n"
+                        + "You will be asked to change it on first login.",
+                "Registration Successful",
                 JOptionPane.INFORMATION_MESSAGE);
 
-//        JOptionPane.showMessageDialog(this,
-//                "Registration successful!\n\nTemporary password: " + tempPassword +
-//                        "\n\nYou will be asked to change it on first login.",
-//                "Success",
-//                JOptionPane.INFORMATION_MESSAGE);
-//
-//        new WelcomeFrame(authService).setVisible(true);
-//        dispose();
+        // Navigate back to welcome screen
+        new WelcomeFrame(authService).setVisible(true);
+        dispose();
     }
 }
