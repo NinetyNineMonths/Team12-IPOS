@@ -8,6 +8,13 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
+/**
+ * Login screen for customer users.
+ *
+ * This class authenticates customer accounts and, where required,
+ * forces a password change on first login before allowing access
+ * to the main customer interface.
+ */
 
 public class CustomerLoginFrame extends JFrame {
 
@@ -15,6 +22,9 @@ public class CustomerLoginFrame extends JFrame {
     private JTextField emailField;
     private JPasswordField passwordField;
 
+    /**
+     * Constructs the customer login window.
+     */
     public CustomerLoginFrame(AuthService authService) {
         this.authService = authService;
 
@@ -56,6 +66,10 @@ public class CustomerLoginFrame extends JFrame {
         });
     }
 
+    /**
+     * Validates customer credentials and opens the main UI.
+     * If the account is marked as first login, a password change is required.
+     */
     private void handleLogin() {
         String email = emailField.getText().trim();
         String password = new String(passwordField.getPassword());
@@ -81,7 +95,6 @@ public class CustomerLoginFrame extends JFrame {
 
 
         new IPOS_PU_GUI(authService, user).setVisible(true);
-//        new CustomerDashboard(user, authService).setVisible(true);
         dispose();
     }
 }

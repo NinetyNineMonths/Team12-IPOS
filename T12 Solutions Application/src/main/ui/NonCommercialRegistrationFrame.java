@@ -8,6 +8,14 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
+/**
+ * Registration form for non-commercial members.
+ *
+ * This class collects a user's basic details, creates a new
+ * non-commercial membership account, and sends a welcome email
+ * containing temporary login credentials.
+ */
+
 public class NonCommercialRegistrationFrame extends JFrame {
 
     private final AuthService authService;
@@ -15,6 +23,9 @@ public class NonCommercialRegistrationFrame extends JFrame {
     private JTextField nameField;
     private JTextField emailField;
 
+    /**
+     * Constructs the non-commercial registration window.
+     */
     public NonCommercialRegistrationFrame(AuthService authService) {
         this.authService = authService;
 
@@ -57,6 +68,10 @@ public class NonCommercialRegistrationFrame extends JFrame {
         });
     }
 
+    /**
+     * Validates the registration input, creates a non-commercial user account,
+     * sends a temporary password by email, and returns the user to the welcome screen.
+     */
     private void handleRegister() {
         String name = nameField.getText().trim();
         String email = emailField.getText().trim();
@@ -92,7 +107,7 @@ public class NonCommercialRegistrationFrame extends JFrame {
                         + "Thank you for registering with IPOS-PU."
         );
 
-        // Show success dialog
+        // Show success message
         JOptionPane.showMessageDialog(this,
                 "Registration successful!\n\n"
                         + "A confirmation email has been sent to:\n" + email + "\n\n"

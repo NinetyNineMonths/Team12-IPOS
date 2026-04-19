@@ -6,6 +6,12 @@ import main.service.AuthService;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * This class is a dialog used to force or allow a user to change their password.
+ *
+ * Used on first login to ensure that temporary passwords are replaced with a secure password.
+ */
+
 public class PasswordChange extends JDialog {
 
     public PasswordChange(JFrame parent, AuthService authService, User user) {

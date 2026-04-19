@@ -8,8 +8,18 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * Service responsible for storing and validating commercial membership applications.
+ *
+ * This class saves submitted applications and checks for duplicate
+ * email addresses or company registration numbers.
+ */
+
 public class CommercialApplicationService {
 
+    /**
+     * Saves a commercial application to the database.
+     */
     public void saveApplication(CommercialApplication application) throws SQLException {
         String sql = """
             INSERT INTO commercial_applications (
@@ -53,6 +63,9 @@ public class CommercialApplicationService {
         }
     }
 
+    /**
+     * Checks whether an application with the same email address already exists.
+     */
     public boolean emailExistsForApplication(String email) throws SQLException {
         String sql = "SELECT 1 FROM commercial_applications WHERE lower(email) = lower(?)";
 
@@ -66,6 +79,9 @@ public class CommercialApplicationService {
         }
     }
 
+    /**
+     * Checks whether an application with the same Company House registration already exists.
+     */
     public boolean companyHouseExists(String reg) throws SQLException {
         String sql = "SELECT 1 FROM commercial_applications WHERE lower(company_house_registration) = lower(?)";
 

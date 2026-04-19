@@ -10,15 +10,22 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PromotionService {
+/**
+ * Service responsible for campaign and promotion management.
+ *
+ * This class supports campaign creation, retrieval, update,
+ * cancellation, deletion, validation, and engagement metric tracking.
+ */
 
-//    private static final DateTimeFormatter FORMATTER =
-//            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+public class PromotionService {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     // To create campaigns
-
+    /**
+     * Creates a new campaign and stores its related items
+     * and metric records in the database.
+     */
     public boolean createCampaign(Campaign campaign) {
         if (campaign == null) return false;
         if (!validateCampaign(campaign)) return false;
@@ -87,7 +94,9 @@ public class PromotionService {
     }
 
     // To read campaigns
-
+    /**
+     * Retrieves a single campaign by its ID.
+     */
     public Campaign getCampaignById(String campaignId) {
         if (campaignId == null || campaignId.trim().isEmpty()) return null;
 
@@ -108,6 +117,9 @@ public class PromotionService {
         }
     }
 
+    /**
+     * Retrieves all campaigns stored in the database.
+     */
     public List<Campaign> getAllCampaigns() {
         String sql = "SELECT * FROM campaigns ORDER BY start_date DESC";
         List<Campaign> campaigns = new ArrayList<>();
@@ -126,6 +138,9 @@ public class PromotionService {
         return campaigns;
     }
 
+    /**
+     * Retrieves all active campaigns stored in the database.
+     */
     public List<Campaign> getActiveCampaigns() {
         String sql = """
             SELECT * FROM campaigns
@@ -155,7 +170,10 @@ public class PromotionService {
     }
 
     // To update campaigns
-
+    /**
+     * Updates selected campaign details such as start date,
+     * end date, and discount type.
+     */
     public boolean updateCampaign(String campaignId, LocalDateTime newStart,
                                   LocalDateTime newEnd, String newDiscountType) {
         if (campaignId == null) return false;
@@ -186,7 +204,9 @@ public class PromotionService {
     }
 
     // To cancel campaigns
-
+    /**
+     * Cancels an active campaign without deleting it from the database.
+     */
     public boolean cancelCampaign(String campaignId) {
         if (campaignId == null || campaignId.trim().isEmpty()) return false;
 
@@ -205,12 +225,11 @@ public class PromotionService {
     }
 
     // To delete campaigns
-
+    /**
+     * Deletes a campaign and all related campaign item and metric records.
+     */
     public boolean deleteCampaign(String campaignId) {
         if (campaignId == null || campaignId.trim().isEmpty()) return false;
-
-//        String deleteItems = "DELETE FROM campaign_items WHERE campaign_id = ?";
-//        String deleteCampaign = "DELETE FROM campaigns WHERE campaign_id = ?";
 
         String deleteItemMetrics = "DELETE FROM campaign_item_metrics WHERE campaign_id = ?";
         String deleteCampaignMetrics = "DELETE FROM campaign_metrics WHERE campaign_id = ?";
@@ -248,7 +267,10 @@ public class PromotionService {
     }
 
     // Helpers
-
+    /**
+     * Parses stored date values into LocalDateTime objects.
+     * Supports both full date-time and date-only formats.
+     */
     private LocalDateTime parseDateTimeFlexible(String value, boolean endOfDay) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("Date value must not be null or empty.");
@@ -269,6 +291,9 @@ public class PromotionService {
         return LocalDateTime.parse(value, FORMATTER);
     }
 
+    /**
+     * Validates campaign data before creation or update.
+     */
     private boolean validateCampaign(Campaign campaign) {
         if (campaign.getCampaignId() == null || campaign.getCampaignId().trim().isEmpty()) return false;
         if (campaign.getStartDateTime() == null || campaign.getEndDateTime() == null) return false;
@@ -283,6 +308,9 @@ public class PromotionService {
         return true;
     }
 
+    /**
+     * Maps a campaign database row into a Campaign object.
+     */
     private Campaign mapCampaign(Connection conn, ResultSet rs) throws SQLException {
         String id = rs.getString("campaign_id");
         List<CampaignItem> items = getItemsForCampaign(conn, id);
@@ -297,6 +325,9 @@ public class PromotionService {
         );
     }
 
+    /**
+     * Retrieves all items linked to a specific campaign.
+     */
     private List<CampaignItem> getItemsForCampaign(Connection conn, String campaignId)
             throws SQLException {
         String sql = "SELECT * FROM campaign_items WHERE campaign_id = ?";
@@ -315,6 +346,9 @@ public class PromotionService {
         return items;
     }
 
+    /**
+     * Increments the total click count for a campaign.
+     */
     public void incrementCampaignHits(String campaignId) {
         String sql = """
             UPDATE campaign_metrics
@@ -333,6 +367,9 @@ public class PromotionService {
         }
     }
 
+    /**
+     * Increments the item hit count for a promoted product.
+     */
     public void incrementItemHits(String campaignId, String itemId, int quantity) {
         String sql = """
             UPDATE campaign_item_metrics
@@ -353,6 +390,9 @@ public class PromotionService {
         }
     }
 
+    /**
+     * Increments the purchase count for a promoted product.
+     */
     public void incrementItemPurchases(String campaignId, String itemId, int quantity) {
         String sql = """
             UPDATE campaign_item_metrics
@@ -373,6 +413,9 @@ public class PromotionService {
         }
     }
 
+    /**
+     * Ensures that every campaign and campaign item has a corresponding metrics record.
+     */
     public void ensureMetricsExistForAllCampaigns() {
         List<Campaign> campaigns = getAllCampaigns();
 

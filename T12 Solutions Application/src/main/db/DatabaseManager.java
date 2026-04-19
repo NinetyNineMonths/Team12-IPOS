@@ -2,14 +2,23 @@ package main.db;
 
 import java.sql.*;
 
+/**
+ * SQLite database bootstrap and seed utility for the local application database.
+ */
 public class DatabaseManager {
 
     private static final String DB_URL = "jdbc:sqlite:ipos_pu.db";
 
+    /**
+     * Opens a new JDBC connection to the local SQLite database.
+     */
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL);
     }
 
+    /**
+     * Creates the required schema objects and inserts baseline seed data.
+     */
     public static void initialise() {
         String usersTable = """
             CREATE TABLE IF NOT EXISTS users (
@@ -74,16 +83,6 @@ public class DatabaseManager {
                 stock_limit     INTEGER NOT NULL
             );
         """;
-
-//        String productsTable = """
-//            CREATE TABLE IF NOT EXISTS products (
-//                product_id    TEXT    PRIMARY KEY,
-//                product_name  TEXT    NOT NULL,
-//                category      TEXT    NOT NULL,
-//                price         REAL    NOT NULL,
-//                stock         INTEGER NOT NULL
-//            );
-//        """;
 
         String ordersTable = """
             CREATE TABLE IF NOT EXISTS orders (
@@ -199,12 +198,16 @@ public class DatabaseManager {
             stmt.execute(paymentsTable);
             stmt.execute(paymentInfo);
             seedUsersIfEmpty(conn);
+            seedScenarioUsers(conn);
             seedProductsIfEmpty(conn);
         } catch (SQLException e) {
             throw new RuntimeException("DB init failed", e);
         }
     }
 
+    /**
+     * Seeds default users when the users table is empty.
+     */
     private static void seedUsersIfEmpty(Connection conn) throws SQLException {
         try (ResultSet rs = conn.createStatement()
                 .executeQuery("SELECT COUNT(*) FROM users")) {
@@ -220,7 +223,22 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Adds scenario/demo users without duplicating existing rows.
+     */
+    private static void seedScenarioUsers(Connection conn) throws SQLException {
+        conn.createStatement().execute("""
+            INSERT OR IGNORE INTO users (email, full_name, password, role, first_login) VALUES
+            ('cool@example.com', 'PU0001', '12ss_56_SS', 'CUSTOMER', 0),
+            ('cool1@example.com', 'PU0002', '34pp_78_LL', 'CUSTOMER', 0),
+            ('peter.popov@example.com', 'Peter Popov', 'DemoUser1!', 'CUSTOMER', 0)
+        """);
+    }
 
+
+    /**
+     * Seeds product catalog entries when no products exist yet.
+     */
     private static void seedProductsIfEmpty(Connection conn) throws SQLException {
         try (ResultSet rs = conn.createStatement()
                 .executeQuery("SELECT COUNT(*) FROM products")) {
@@ -248,20 +266,4 @@ public class DatabaseManager {
             }
         }
     }
-
-//    private static void seedProductsIfEmpty(Connection conn) throws SQLException {
-//        try (ResultSet rs = conn.createStatement()
-//                .executeQuery("SELECT COUNT(*) FROM products")) {
-//            if (rs.getInt(1) == 0) {
-//                conn.createStatement().execute("""
-//                INSERT INTO products (product_id, product_name, category, price, stock) VALUES
-//                ('PARA001', 'Paracetamol 500mg (16 tablets)', 'Pain relief', 2.99, 120),
-//                ('IBU002', 'Ibuprofen 400mg (24 tablets)', 'Anti-inflammatory', 4.49, 85),
-//                ('VIT003', 'Vitamin D3 1000IU (90 capsules)', 'Supplements', 6.99, 200),
-//                ('ALL004', 'Allergy Relief (Cetirizine 10mg)', 'Antihistamine', 3.79, 45),
-//                ('BAND005', 'Bandages & Plasters Pack', 'First Aid', 5.49, 30)
-//            """);
-//            }
-//        }
-//    }
 }

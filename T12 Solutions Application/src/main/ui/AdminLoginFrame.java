@@ -8,12 +8,23 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
+/**
+ * Login screen for administrator users.
+ *
+ * This class collects admin credentials, validates them through
+ * the authentication service, and opens the admin dashboard
+ * when login is successful.
+ */
+
 public class AdminLoginFrame extends JFrame {
 
     private final AuthService authService;
     private JTextField emailField;
     private JPasswordField passwordField;
 
+    /**
+     * Constructs the admin login window.
+     */
     public AdminLoginFrame(AuthService authService) {
         this.authService = authService;
 
@@ -55,6 +66,10 @@ public class AdminLoginFrame extends JFrame {
         });
     }
 
+    /**
+     * Validates the admin login details and opens the admin dashboard
+     * if the user has an administrator role.
+     */
     private void handleLogin() {
         String email = emailField.getText().trim();
         String password = new String(passwordField.getPassword());
@@ -71,17 +86,5 @@ public class AdminLoginFrame extends JFrame {
 
         new AdminDashboard().setVisible(true);
         dispose();
-//
-//        if (user == null || !user.isAdmin()) {
-//            JOptionPane.showMessageDialog(this,
-//                    "Invalid admin login.",
-//                    "Login Failed",
-//                    JOptionPane.ERROR_MESSAGE);
-//            return;
-//        }
-//
-//        new AdminDashboard(user, authService).setVisible(true);
-//        dispose();
-        //small change
     }
 }

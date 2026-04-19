@@ -9,8 +9,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate; 
 
+/**
+ * Adapter responsible for writing and reading PU application data from SA storage.
+ */
 public class SAApplicationDbAdapter {
 
+    /**
+     * Result of attempting to submit a commercial application to SA.
+     */
     public enum SubmitResult {
         SUCCESS,        
         ALREADY_EXISTS, 
@@ -18,6 +24,9 @@ public class SAApplicationDbAdapter {
         DB_UNAVAILABLE  
     }
 
+    /**
+     * Inserts a commercial application into SA, returning a high-level submission result.
+     */
     public SubmitResult submitApplication(CommercialApplication application) {
         if (application == null) {
             System.out.println("[SA-DB] Cannot submit: application is null.");
@@ -82,6 +91,9 @@ public class SAApplicationDbAdapter {
         }
     }
 
+    /**
+     * Reads the current SA-side status for an application identifier.
+     */
     public String getApplicationStatus(String applicationId) {
         if (applicationId == null || applicationId.trim().isEmpty()) {
             return "NOT_FOUND";
@@ -107,6 +119,9 @@ public class SAApplicationDbAdapter {
         }
     }
 
+    /**
+     * Quick reachability probe used before SA-dependent actions.
+     */
     public boolean isReachable() {
         try (Connection conn = SADatabaseManager.getConnection()) {
             return conn != null && conn.isValid(2);
@@ -115,6 +130,7 @@ public class SAApplicationDbAdapter {
         }
     }
 
+    // Build a compact address string from non-empty address components.
     private String buildAddress(CommercialApplication application) {
         StringBuilder sb = new StringBuilder();
         appendIfNotBlank(sb, application.getAddressLine1());
@@ -125,17 +141,20 @@ public class SAApplicationDbAdapter {
         return result.length() > 500 ? result.substring(0, 500) : result;
     }
 
+    // Pack optional metadata that does not map directly to SA columns.
     private String buildNotes(CommercialApplication application) {
         return "directorContact=" + safe(application.getDirectorContact())
                 + "; notificationMethod=" + safe(application.getNotificationMethod());
     }
 
+    // Appends values with comma separation while skipping blanks.
     private void appendIfNotBlank(StringBuilder sb, String value) {
         if (value == null || value.trim().isEmpty()) return;
         if (sb.length() > 0) sb.append(", ");
         sb.append(value.trim());
     }
 
+    // Converts null strings into empty values before persistence.
     private String safe(String value) {
         return value == null ? "" : value.trim();
     }

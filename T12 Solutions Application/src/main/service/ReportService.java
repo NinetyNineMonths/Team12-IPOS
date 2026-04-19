@@ -19,20 +19,26 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service responsible for generating business and campaign reports.
+ *
+ * This class produces sales reports, campaign performance reports,
+ * and campaign engagement reports using data stored in the database.
+ */
+
 public class ReportService {
     private final Connection connection;
 
+    /**
+     * Constructs the report service using an existing database connection.
+     */
     public ReportService(Connection connection) {
         this.connection = connection;
     }
 
-    /* To connect to the database, we have to add these lines to AppLauncher.java:
-            Connection conn = DriverManager.getConnection(url, username, password);
-            ReportService reportService = new ReportService(conn);
-
-        Once we decide how we're going to access the database, we can add these.
-    */
-
+    /**
+     * Generates a sales report for a given date range.
+     */
     public SalesReport generateSalesReport(LocalDate startDate, LocalDate endDate) throws SQLException {
         
         validateDateRange(startDate, endDate);
@@ -59,9 +65,6 @@ public class ReportService {
             stmt.setString(1, startDate.toString());
             stmt.setString(2, endDate.toString());
 
-//            stmt.setObject(1, startDate);
-//            stmt.setObject(2, endDate);
-
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String itemId = rs.getString("item_id");
@@ -82,8 +85,10 @@ public class ReportService {
         return new SalesReport(startDate, endDate, items, totalUnitsSold, totalRevenue);
     }
 
-    // Generates a Campaigns Report for IPOS-PU over a given date range
 
+    /**
+     * Generates a campaigns report for a given date range.
+     */
     public CampaignsReport generateCampaignsReport(LocalDate startDate, LocalDate endDate) throws SQLException {
 
         validateDateRange(startDate, endDate);
@@ -185,6 +190,9 @@ public class ReportService {
         return new CampaignsReport(startDate, endDate, campaigns, activeCampaignCount);
     }
 
+    /**
+     * Generates a campaign engagement report for a specified campaign ID.
+     */
     public CampaignEngagementReport generateCampaignEngagementReport(String campaignId) throws SQLException {
 
         if (campaignId == null || campaignId.trim().isEmpty()) {
@@ -298,6 +306,9 @@ public class ReportService {
         );
     }
 
+    /**
+     * Parses stored date values into LocalDateTime format.
+     */
     private LocalDateTime parseDateTimeFlexible(String value, boolean endOfDay) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("Date value must not be null or empty.");
@@ -313,6 +324,9 @@ public class ReportService {
         return LocalDateTime.parse(value);
     }
 
+    /**
+     * Validates that the report date range is complete and logically ordered.
+     */
     private void validateDateRange(LocalDate start, LocalDate end) {
         if (start == null || end == null) {
             throw new IllegalArgumentException("Start date and end date must not be null.");

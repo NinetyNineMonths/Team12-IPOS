@@ -6,10 +6,23 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
+/**
+ * Welcome screen for the IPOS-PU subsystem.
+ *
+ * This class acts as the main navigation page for users,
+ * allowing them to choose between customer login, admin login,
+ * non-commercial registration, commercial application,
+ * returning to the shop, or exiting the system.
+ */
+
 public class WelcomeFrame extends JFrame {
 
     private final AuthService authService;
 
+    /**
+     * Constructs the welcome screen and initialises
+     * all navigation buttons.
+     */
     public WelcomeFrame(AuthService authService) {
         this.authService = authService;
 

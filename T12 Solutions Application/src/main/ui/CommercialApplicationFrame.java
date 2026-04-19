@@ -12,6 +12,14 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
+/**
+ * Form used by businesses to apply for commercial membership.
+ *
+ * This class collects company details, validates the input,
+ * stores the application locally, and attempts to forward it
+ * to the SA subsystem for review.
+ */
+
 public class CommercialApplicationFrame extends JFrame {
 
     private final AuthService authService;
@@ -32,6 +40,9 @@ public class CommercialApplicationFrame extends JFrame {
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
 
+    /**
+     * Constructs the commercial membership application form.
+     */
     public CommercialApplicationFrame(AuthService authService) {
         this.authService = authService;
         this.applicationService = new CommercialApplicationService();
@@ -111,6 +122,10 @@ public class CommercialApplicationFrame extends JFrame {
         });
     }
 
+    /**
+     * Validates the commercial membership form, checks for duplicates,
+     * saves the application locally, and submits it to the SA subsystem.
+     */
     private void handleSubmit() {
         String companyName              = companyNameField.getText().trim();
         String businessType             = businessTypeField.getText().trim();
@@ -188,12 +203,8 @@ public class CommercialApplicationFrame extends JFrame {
                 return;
             }
 
-            // Step 1 — save locally to PU's own SQLite database
             applicationService.saveApplication(application);
 
-            // Step 2 — forward to SA's shared PostgreSQL database.
-            // SA will review, update status, and send the outcome email via their own system.
-            // PU does NOT send the approval/rejection email — SA handles that.
             SAApplicationDbAdapter saAdapter = new SAApplicationDbAdapter();
             SAApplicationDbAdapter.SubmitResult saResult = saAdapter.submitApplication(application);
 
@@ -210,7 +221,6 @@ public class CommercialApplicationFrame extends JFrame {
                 case INVALID_INPUT ->
                     successMessage += "\nNote: Application data was invalid — saved locally only.";
                 default ->
-                    // DB_UNAVAILABLE — SA unreachable, but PU saved locally so no data is lost
                     successMessage += "\nNote: Could not reach SA system right now.\n"
                             + "Your application has been saved locally.";
             }
