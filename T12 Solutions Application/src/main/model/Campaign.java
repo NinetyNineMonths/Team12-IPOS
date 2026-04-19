@@ -9,6 +9,14 @@ import java.util.Map;
 import main.model.CampaignItem;
 // REPRESENTS A PROMOTION/CAMPAIGN RUN VIA THE IPOS-PU PORTAL
 
+/**
+ * Represents a promotion campaign run through the IPOS-PU subsystem.
+ *
+ * This class stores campaign dates, discount details, included items,
+ * cancellation status, and campaign engagement metrics such as hits
+ * and purchases.
+ */
+
 public class Campaign {
     private final String campaignId;
     private final LocalDateTime startDateTime;

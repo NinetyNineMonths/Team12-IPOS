@@ -2,6 +2,13 @@ package main.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * Represents a commercial membership application submitted by a business.
+ *
+ * This class stores company details, director details,
+ * submission status, and the submission timestamp.
+ */
+
 public class CommercialApplication {
 
     private final String applicationId;

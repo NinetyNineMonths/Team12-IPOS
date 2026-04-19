@@ -29,6 +29,9 @@ public class CampaignsReport {
         return campaigns.isEmpty();
     }
 
+    /**
+     * Returns a formatted text version of the campaigns report.
+     */
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

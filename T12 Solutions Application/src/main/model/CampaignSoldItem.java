@@ -24,6 +24,9 @@ public class CampaignSoldItem {
     public int getItemsSold() { return itemsSold; }
     public double getTotalSales() { return totalSales; }
 
+    /**
+     * Returns a formatted text representation of the sold item.
+     */
     @Override
     public String toString() {
         return String.format("%-12s %-40s %10.0f%% %12d %12.2f",
