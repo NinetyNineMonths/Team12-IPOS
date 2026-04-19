@@ -2,6 +2,13 @@ package main.model;
 
 import java.util.List;
 
+/**
+ * Represents a customer order.
+ *
+ * This class stores an order ID, the list of order items,
+ * and the total value of the order.
+ */
+
 public class Order {
   private String orderId;
     private List<OrderItem> items;

@@ -1,5 +1,12 @@
 package main.model;
 
+/**
+ * Represents one row in the sales report.
+ *
+ * This class stores the product ID, product description,
+ * quantity sold, unit price, and line total.
+ */
+
 public class User {
     private final String email;
     private String password;

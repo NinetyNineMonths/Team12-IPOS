@@ -2,6 +2,13 @@ package main.model;
 
 import main.model.Product;
 
+/**
+ * Represents a single product entry within an order.
+ *
+ * This class stores the selected product, the quantity ordered,
+ * and the calculated total price for that item line.
+ */
+
 public class OrderItem {
    private Product product;
     private int quantity;

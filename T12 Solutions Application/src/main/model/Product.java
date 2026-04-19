@@ -1,5 +1,12 @@
 package main.model;
 
+/**
+ * Represents a product in the IPOS-PU catalogue.
+ *
+ * This class stores identifying, descriptive, pricing,
+ * packaging, and stock-related information for a product.
+ */
+
 public class Product {
     private final String id;
     private final String name;
@@ -24,6 +31,8 @@ public class Product {
         this.stock = stock;
         this.stockLimit = stockLimit;
     }
+
+    //GETTERS
 
     public String getId() { return id; }
     public String getName() { return name; }

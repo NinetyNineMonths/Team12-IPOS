@@ -1,5 +1,12 @@
 package main.model;
 
+/**
+ * Represents a member account with basic login details.
+ *
+ * This class stores an email, password, and account type flag,
+ * and allows these values to be updated.
+ */
+
 public class Member {
    private String email;
     private String password;

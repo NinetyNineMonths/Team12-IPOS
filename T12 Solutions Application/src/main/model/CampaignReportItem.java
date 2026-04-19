@@ -35,6 +35,9 @@ public class CampaignReportItem {
         return soldItems.size();
     }
 
+    /**
+     * Returns a formatted text representation of the campaign report item.
+     */
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

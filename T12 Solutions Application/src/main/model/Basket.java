@@ -5,6 +5,14 @@ import java.util.List;
 import main.model.OrderItem;
 import main.model.Product;
 
+/**
+ * Represents a customer's shopping basket.
+ *
+ * This class stores selected products as order items,
+ * allows items to be added or removed, and calculates
+ * the current basket total.
+ */
+
 public class Basket {
    private List<OrderItem> items = new ArrayList<>();
 

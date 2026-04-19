@@ -24,6 +24,9 @@ public class CampaignEngagementRow {
     public int getHitsCount() { return hitsCount; }
     public int getpurchases() { return purchases; }
 
+    /**
+     * Calculates the conversion rate as purchases divided by hits.
+     */
     public double getConversionRate() {
 
         if (hitsCount == 0 ) return 0;
@@ -31,6 +34,9 @@ public class CampaignEngagementRow {
 
     }
 
+    /**
+     * Returns the conversion rate as a formatted string.
+     */
     public String getConversionRateFormatted() {
 
         if ("Campaign".equalsIgnoreCase(counterId)) {
@@ -47,6 +53,9 @@ public class CampaignEngagementRow {
 
     }
 
+    /**
+     * Returns a formatted string representation of the row.
+     */
     @Override
     public String toString() {
         return String.format("%-15s %-42s %10d %12s %20s",

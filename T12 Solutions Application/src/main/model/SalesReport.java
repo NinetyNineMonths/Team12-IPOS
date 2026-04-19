@@ -4,6 +4,13 @@ import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Represents the complete sales report for a selected period.
+ *
+ * This class stores the report dates, the individual sales rows,
+ * and the grand totals for units sold and revenue.
+ */
+
 public class SalesReport {
 
     /* THE COMPLETE SALES REPORT.
