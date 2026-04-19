@@ -229,7 +229,7 @@ public class SAMerchantApplicationAPIImpl implements SAMerchantApplicationAPI {
      * @param email              the applicant's email address
      * @param directorName       the director's name used in the email greeting
      * @param companyName        the company name referenced in the email body
-     * @param notificationMethod the applicant's preferred method 
+     * @param notificationMethod the applicant's preferred method
      * @param newStatus          the decision
      */
     private void notifyApplicantIfRequired(String email,
