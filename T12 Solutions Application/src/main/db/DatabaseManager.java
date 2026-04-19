@@ -2,14 +2,23 @@ package main.db;
 
 import java.sql.*;
 
+/**
+ * SQLite database bootstrap and seed utility for the local application database.
+ */
 public class DatabaseManager {
 
     private static final String DB_URL = "jdbc:sqlite:ipos_pu.db";
 
+    /**
+     * Opens a new JDBC connection to the local SQLite database.
+     */
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL);
     }
 
+    /**
+     * Creates the required schema objects and inserts baseline seed data.
+     */
     public static void initialise() {
         String usersTable = """
             CREATE TABLE IF NOT EXISTS users (
@@ -196,6 +205,9 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Seeds default users when the users table is empty.
+     */
     private static void seedUsersIfEmpty(Connection conn) throws SQLException {
         try (ResultSet rs = conn.createStatement()
                 .executeQuery("SELECT COUNT(*) FROM users")) {
@@ -211,6 +223,9 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Adds scenario/demo users without duplicating existing rows.
+     */
     private static void seedScenarioUsers(Connection conn) throws SQLException {
         conn.createStatement().execute("""
             INSERT OR IGNORE INTO users (email, full_name, password, role, first_login) VALUES
@@ -221,6 +236,9 @@ public class DatabaseManager {
     }
 
 
+    /**
+     * Seeds product catalog entries when no products exist yet.
+     */
     private static void seedProductsIfEmpty(Connection conn) throws SQLException {
         try (ResultSet rs = conn.createStatement()
                 .executeQuery("SELECT COUNT(*) FROM products")) {
