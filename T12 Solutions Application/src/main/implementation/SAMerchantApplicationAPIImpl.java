@@ -11,11 +11,25 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Handles the full commercial membership application lifecycle on the PU side:
+ *    Parses application strings from the UI
+ *       Saves validated applications to PU's local SQLite
+ *       Reads status back from the local table when queried
+ *       Updates application status and sends outcome notification emails
+ */
 public class SAMerchantApplicationAPIImpl implements SAMerchantApplicationAPI {
 
     private final PUCommsAPI puCommsAPI = new PUCommsAPIImpl();
 
     @Override
+    /**
+     * Parses an application string, validates all required fields,
+     * generates a unique application ID, and inserts the record into PU's local table
+     * @param application contains application details
+     * @return the generated application ID or an error message
+     */
+
     public String submitMerchantApplication(String application) {
         if (application == null || application.trim().isEmpty()) {
             return "Application submission failed: application data is empty.";
@@ -96,6 +110,12 @@ public class SAMerchantApplicationAPIImpl implements SAMerchantApplicationAPI {
     }
 
     @Override
+    /**
+     * Retrieves the current status of a commercial application from PU's local database.
+     * @param applicationId the application reference ID
+     * @return the status string
+     */
+
     public String getApplicationStatus(String applicationId) {
         if (applicationId == null || applicationId.trim().isEmpty()) {
             return "Invalid application ID.";
@@ -126,6 +146,14 @@ public class SAMerchantApplicationAPIImpl implements SAMerchantApplicationAPI {
             return "Failed to retrieve application status.";
         }
     }
+
+    /**
+     * Updates the status of an existing application to approved or rejected,
+     * then sends an outcome notification email to the applicant
+     * @param applicationId the application reference ID to update
+     * @param newStatus     the new status
+     * @return true or false based on whether it was successful
+     */
 
     public boolean updateApplicationStatus(String applicationId, String newStatus) {
         if (applicationId == null || applicationId.trim().isEmpty()) {
@@ -195,6 +223,15 @@ public class SAMerchantApplicationAPIImpl implements SAMerchantApplicationAPI {
         }
     }
 
+    /**
+     * Sends an approval or rejection email to the applicant via email
+     *
+     * @param email              the applicant's email address
+     * @param directorName       the director's name used in the email greeting
+     * @param companyName        the company name referenced in the email body
+     * @param notificationMethod the applicant's preferred method 
+     * @param newStatus          the decision
+     */
     private void notifyApplicantIfRequired(String email,
                                            String directorName,
                                            String companyName,

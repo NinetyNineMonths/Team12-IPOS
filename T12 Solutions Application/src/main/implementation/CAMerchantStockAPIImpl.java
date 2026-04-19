@@ -8,7 +8,22 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * Implementation of {@link main.api.CAMerchantStockAPI} that reads from and
+ * writes to IPOS-PU's local SQLite products table.
+ *
+ * Used by the checkout flow to deduct stock after a successful online purchase,
+ * and to notify CA that a paid order has been completed with a delivery address.
+ */
+
 public class CAMerchantStockAPIImpl implements CAMerchantStockAPI {
+
+    /**
+     * Queries the local products table for the current stock level of a product.
+     *
+     * @param productId the unique product ID
+     * @return the current stock count
+     */
 
     @Override
     public int checkStock(String productId) {
@@ -41,6 +56,13 @@ public class CAMerchantStockAPIImpl implements CAMerchantStockAPI {
     }
 
     @Override
+
+    /**
+     * Deducts a given quantity from the product's stock in the local database.
+     * @param productId the unique product ID
+     * @param quantity  number of units to deduct
+     */
+
     public boolean deductStock(String productId, int quantity) {
         if (productId == null || productId.trim().isEmpty() || quantity <= 0) {
             return false;
@@ -69,6 +91,9 @@ public class CAMerchantStockAPIImpl implements CAMerchantStockAPI {
     }
 
     @Override
+    /**
+     *  Returns a formatted multi-line string of all products matching the keyword
+     */
     public String listAvailableStock(String keyword) {
         StringBuilder sb = new StringBuilder();
 
@@ -128,6 +153,10 @@ public class CAMerchantStockAPIImpl implements CAMerchantStockAPI {
     }
 
     @Override
+    /**
+     *
+     * Records that a paid online order has been completed and notifies CA
+     */
     public String submitPaidOrder(String orderId, String items) {
         if (orderId == null || orderId.trim().isEmpty()) {
             return "Invalid order ID.";

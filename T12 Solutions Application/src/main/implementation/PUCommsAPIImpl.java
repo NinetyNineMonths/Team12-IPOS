@@ -11,11 +11,28 @@ import java.util.Properties;
 
 
 public class PUCommsAPIImpl implements PUCommsAPI {
-
+    /**
+     * Sends real emails via Gmail SMTP using Jakarta Mail
+     * when credentials are configured.
+     * Falls back to console logging if SMTP is not configured or fails,
+     *
+     * Email flows handled:
+     *   - Non-commercial member registration — delivers temporary password
+     *   - Order confirmation - itemised receipt with tracking link after checkout
+     *   - SA application outcome - approval/rejection notification on behalf of IPOS-SA
+     *
+     * Payment flows handled:
+     *   - Card authorisation with number masking and validation
+     *   - Failed payment detection and shows message
+     */
     public PUCommsAPIImpl() {
     }
     /**
      * Sends an email via Gmail SMTP if credentials are configured in EmailConfig.
+     *  @param to recipient email address; must not be null or blank
+     *  @param subject the email subject line
+     *  @param body    the plain-text email body; must not be null or blank
+     *  @return {@code true} if the email was sent or safely logged as a fallback
      */
 
     @Override
@@ -104,11 +121,18 @@ public class PUCommsAPIImpl implements PUCommsAPI {
     }
 
     @Override
+    /**
+     * Validates and authorises a card payment for an order.
+     * The card number is masked to show only the last four digits before logging.
+     */
     public boolean authorisePayment(String orderId, double amount) {
         return authorisePayment(orderId, amount, "000000000000");
     }
 
     @Override
+    /**
+     * Logs a transaction event to the console
+     */
     public void recordTransaction(String refId, String type, String outcome, String timestamp) {
         System.out.println("[TRANSACTION] Ref: " + refId
                 + " | Type: " + type

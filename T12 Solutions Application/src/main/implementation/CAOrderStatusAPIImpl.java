@@ -9,9 +9,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 
+/**
+ * Displays the current status of a customer's order by reading order status directly from IPOS-PU's local SQLite orders table
+ */
 public class CAOrderStatusAPIImpl implements CAOrderStatusAPI {
 
     @Override
+
+    /**
+     * Retrieves the current status of an order from the local orders table.
+     *
+     *   @param orderId the unique order ID
+     *   @return the status string
+     */
     public String getOrderStatus(String orderId) {
         if (orderId == null || orderId.trim().isEmpty()) {
             return "Invalid order ID.";
@@ -42,6 +52,12 @@ public class CAOrderStatusAPIImpl implements CAOrderStatusAPI {
     }
 
     @Override
+    /**
+     * Returns the timestamp of the most recently updated order
+     * @param since the reference datetime
+     * @return the {@code LocalDateTime} of the latest order update found,
+    */
+
     public LocalDateTime listUpdatedOrders(LocalDateTime since) {
 
         if (since == null) {
