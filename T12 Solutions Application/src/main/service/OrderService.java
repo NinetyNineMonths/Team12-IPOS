@@ -15,18 +15,38 @@ import java.util.List;
 import java.util.UUID;
 
 @SuppressWarnings("SqlResolve")
+
+/**
+ * Service responsible for processing customer orders.
+ *
+ * This class validates checkout requests, records orders and payments,
+ * updates order history, checks loyalty discounts, and sends
+ * order confirmation and tracking emails.
+ */
+
 public class OrderService {
 
     private final PUCommsAPI commsApi;
 
+    /**
+     * Constructs the order service using the default communications implementation.
+     */
     public OrderService() {
         this(new PUCommsAPIImpl());
     }
 
+    /**
+     * Constructs the order service with a supplied communications API.
+     */
     public OrderService(PUCommsAPI commsApi) {
         this.commsApi = commsApi;
     }
 
+    /**
+     * Processes a complete checkout request, including validation,
+     * payment authorisation, order persistence, merchant propagation,
+     * and confirmation email sending.
+     */
     public CheckoutResult checkoutOrder(String userEmail,
                                         List<OrderLine> items,
                                         String addressLine1,
@@ -89,6 +109,9 @@ public class OrderService {
         return CheckoutResult.success(orderId, finalTotal, discountApplied, propagated);
     }
 
+    /**
+     * Updates the status of an existing order.
+     */
     public boolean updateOrderStatus(String orderId, String newStatus) {
         if (orderId == null || orderId.trim().isEmpty()) return false;
         if (newStatus == null || newStatus.trim().isEmpty()) return false;
@@ -104,6 +127,9 @@ public class OrderService {
         }
     }
 
+    /**
+     * Retrieves the current status of a specific order for a given user.
+     */
     public String getOrderStatus(String userEmail, String orderId) {
         if (userEmail == null || userEmail.trim().isEmpty()) return null;
         if (orderId == null || orderId.trim().isEmpty()) return null;
@@ -121,6 +147,9 @@ public class OrderService {
         return null;
     }
 
+    /**
+     * Retrieves a summary list of all orders placed by a specific user.
+     */
     public List<OrderSummary> getOrdersForUser(String userEmail) {
         if (userEmail == null || userEmail.trim().isEmpty()) return Collections.emptyList();
 
@@ -151,6 +180,9 @@ public class OrderService {
         return summaries;
     }
 
+    /**
+     * Retrieves all individual order lines for a specific order.
+     */
     public List<OrderLine> getOrderItems(String orderId) {
         if (orderId == null || orderId.trim().isEmpty()) return Collections.emptyList();
 
@@ -181,6 +213,9 @@ public class OrderService {
         return items;
     }
 
+    /**
+     * Checks whether the user qualifies for the 10th-order non-commercial member discount.
+     */
     public boolean qualifiesForTenthOrderDiscount(String userEmail) {
         if (userEmail == null || userEmail.trim().isEmpty()) return false;
 
@@ -203,6 +238,9 @@ public class OrderService {
         }
     }
 
+    /**
+     * Inserts the main order record into the orders table.
+     */
     private void insertOrder(Connection conn,
                              String orderId,
                              String userEmail,
@@ -224,6 +262,9 @@ public class OrderService {
         }
     }
 
+    /**
+     * Inserts all order line records linked to a specific order.
+     */
     private void insertOrderItems(Connection conn, String orderId, List<OrderLine> items) throws SQLException {
         String sql = """
             INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, line_total, campaign_id)
@@ -244,6 +285,9 @@ public class OrderService {
         }
     }
 
+    /**
+     * Inserts a payment record linked to the order.
+     */
     private void insertPaymentRecord(Connection conn,
                                      String orderId,
                                      String userEmail,
@@ -265,6 +309,9 @@ public class OrderService {
         }
     }
 
+    /**
+     * Authorises payment using the CommsAPI.
+     */
     private boolean authorisePayment(String orderId, double amount, String cardNumber) {
         if (commsApi instanceof PUCommsAPIImpl impl) {
             return impl.authorisePayment(orderId, amount, cardNumber);
@@ -273,6 +320,9 @@ public class OrderService {
     }
 
     // Until IPOS-CA integration code arrives, this records a successful handoff event.
+    /**
+     * Records a merchant propagation event until full CA integration is available.
+     */
     private boolean propagateSaleToMerchant(String orderId,
                                             String userEmail,
                                             String addressLine1,
@@ -292,6 +342,9 @@ public class OrderService {
         return details.length() > 0;
     }
 
+    /**
+     * Sends a confirmation and tracking email after a successful checkout.
+     */
     private void sendTrackingEmail(String userEmail, String orderId, double finalTotal, boolean discountApplied) {
         String trackingLink = "https://ipos-pu.local/track/" + orderId;
         String body = "Thank you for your purchase.\n\n"
@@ -302,6 +355,9 @@ public class OrderService {
         commsApi.sendEmail(userEmail, "Your IPOS-PU order confirmation", body);
     }
 
+    /**
+     * Calculates the subtotal value of all order lines before discounts.
+     */
     private double calculateSubtotal(List<OrderLine> items) {
         double sum = 0;
         for (OrderLine line : items) {
@@ -310,29 +366,37 @@ public class OrderService {
         return sum;
     }
 
+    /**
+     * Represents a single product line within an order.
+     */
     public record OrderLine(String productId,
                             String productName,
                             int quantity,
                             double unitPrice,
                             String campaignId) {
+        // checks if order line has usable data
         public boolean isValid() {
             return productId != null && !productId.trim().isEmpty()
                     && productName != null && !productName.trim().isEmpty()
                     && quantity > 0
                     && unitPrice >= 0;
         }
-
+        // calculates total value of order line
         public double lineTotal() {
             return quantity * unitPrice;
         }
     }
 
+    /**
+     * Represents the result of a checkout attempt.
+     */
     public record CheckoutResult(boolean success,
                                  String orderId,
                                  double finalTotal,
                                  boolean discountApplied,
                                  boolean propagatedToMerchant,
                                  String message) {
+        // successful checkout result
         public static CheckoutResult success(String orderId,
                                              double finalTotal,
                                              boolean discountApplied,
@@ -340,15 +404,24 @@ public class OrderService {
             return new CheckoutResult(true, orderId, finalTotal, discountApplied, propagatedToMerchant, "Order completed.");
         }
 
+        /**
+         * Creates a failed checkout result with no order reference.
+         */
         public static CheckoutResult failure(String message) {
             return new CheckoutResult(false, null, 0, false, false, message);
         }
 
+        /**
+         * Creates a failed checkout result where an order record already exists.
+         */
         public static CheckoutResult failureWithOrder(String orderId, double finalTotal, String message) {
             return new CheckoutResult(false, orderId, finalTotal, false, false, message);
         }
     }
 
+    /**
+     * Represents a summary view of a saved order.
+     */
     public record OrderSummary(String orderId,
                                String orderDateTime,
                                int itemCount,

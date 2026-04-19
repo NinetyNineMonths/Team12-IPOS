@@ -7,12 +7,23 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.sql.*;
 
+/**
+ * Simple database viewer used for admin inspection.
+ *
+ * This class allows the user to choose a database table
+ * and display its contents in a Swing table.
+ */
+
 public class DatabaseViewer extends JFrame {
 
     private JTable table;
     private DefaultTableModel model;
     private JComboBox<String> tableSelector;
 
+    /**
+     * Constructs the database viewer window and loads
+     * the default table on startup.
+     */
     public DatabaseViewer() {
         setTitle("Database Viewer");
         setSize(900, 500);
@@ -53,6 +64,9 @@ public class DatabaseViewer extends JFrame {
         loadTable("users");
     }
 
+    /**
+     * Loads all data from the selected table into the Swing table model.
+     */
     private void loadTable(String tableName) {
         model.setRowCount(0);
         model.setColumnCount(0);

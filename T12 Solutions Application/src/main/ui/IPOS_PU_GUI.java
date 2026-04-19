@@ -27,10 +27,16 @@ import main.implementation.PUCommsAPIImpl;
 
 
 /**
- * IPOS-PU Desktop GUI Prototype
- * Public-facing online pharmacy portal for members of the public.
- * Features: Browse catalogue, filter, promotions, shopping cart, checkout (simulated), track orders.
- * Simple, clean, accessible Swing UI - consistent layout, clear labels, tooltips.
+ * Main graphical user interface for the IPOS-PU subsystem.
+ *
+ * This class represents the public-facing online pharmacy portal.
+ * It allows users to browse products, search the catalogue,
+ * view promotions, manage a shopping cart, place orders,
+ * view previous orders, and access membership options.
+ *
+ * The class also coordinates communication with supporting services
+ * such as catalogue management, order processing, campaign handling,
+ * reporting, and user authentication.
  */
 public class IPOS_PU_GUI extends JFrame {
 
@@ -102,12 +108,18 @@ public class IPOS_PU_GUI extends JFrame {
         setVisible(true);
     }
 
-
+    /**
+     * Loads the latest product catalogue from the database.
+     */
     private void loadCatalogueFromDatabase() {
         catalogue.clear();
         catalogue.addAll(catalogueService.getAllProducts());
     }
 
+    /**
+     * Creates the top header bar containing the system title,
+     * login/logout button, and shopping cart button.
+     */
     private void createHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(new Color(0, 102, 204));
@@ -143,6 +155,10 @@ public class IPOS_PU_GUI extends JFrame {
         add(header, BorderLayout.NORTH);
     }
 
+    /**
+     * Creates the browse catalogue tab, including the search bar,
+     * product table, and add-to-cart action.
+     */
     private JPanel createBrowsePanel() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -191,6 +207,10 @@ public class IPOS_PU_GUI extends JFrame {
         return panel;
     }
 
+    /**
+     * Filters the catalogue based on the user's search keyword
+     * and refreshes the product table with matching results.
+     */
     private void performSearch(ActionEvent e) {
         String keyword = searchField.getText().trim().toLowerCase();
         if (keyword.isEmpty()) {
@@ -207,7 +227,10 @@ public class IPOS_PU_GUI extends JFrame {
         refreshProductTable(filtered);
     }
 
-
+    /**
+     * Refreshes the product table with the given list of products,
+     * including effective price and remaining stock.
+     */
     private void refreshProductTable(List<Product> products) {
         productTableModel.setRowCount(0);
 
@@ -228,7 +251,10 @@ public class IPOS_PU_GUI extends JFrame {
         }
     }
 
-
+    /**
+     * Adds the selected product to the shopping cart after validating
+     * the chosen quantity and checking available stock.
+     */
     private void addSelectedToCart() {
         int row = productTable.getSelectedRow();
 
@@ -308,6 +334,10 @@ public class IPOS_PU_GUI extends JFrame {
         }
     }
 
+    /**
+     * Calculates the best available price for a product,
+     * including any active campaign discounts.
+     */
     private double getEffectivePrice(Product product) {
         double bestPrice = product.getRetailPrice();
 
@@ -325,15 +355,26 @@ public class IPOS_PU_GUI extends JFrame {
         return bestPrice;
     }
 
+    /**
+     * Returns the quantity of a given product currently in the cart.
+     */
     private int getQuantityInCart(Product product) {
         CartItem item = findCartItem(product);
         return (item == null) ? 0 : item.quantity;
     }
 
+    /**
+     * Calculates how much stock remains available for purchase
+     * after accounting for items already added to the cart.
+     */
     private int getAvailableStock(Product product) {
         return Math.max(product.getStock() - getQuantityInCart(product), 0);
     }
 
+    /**
+     * Refreshes the browse tab and promotions tab after
+     * catalogue or campaign-related changes.
+     */
     private void refreshBrowseView() {
         if (productTableModel == null) {
             return;
@@ -356,6 +397,10 @@ public class IPOS_PU_GUI extends JFrame {
         refreshPromotionsView();
     }
 
+
+    /**
+     * Creates the promotions tab showing all currently active campaigns.
+     */
     private JPanel createPromotionsPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -395,12 +440,21 @@ public class IPOS_PU_GUI extends JFrame {
         return panel;
     }
 
+
+    /**
+     * Refreshes the promotions tab so that the latest campaign data is displayed.
+     */
     private void refreshPromotionsView() {
         if (mainTabs != null) {
             mainTabs.setComponentAt(1, createPromotionsPanel());
         }
     }
 
+    /**
+     * Creates the shopping cart tab, including cart controls
+     * for updating quantities, removing items, clearing the cart,
+     * and proceeding to checkout.
+     */
     private JPanel createCartPanel() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -450,6 +504,9 @@ public class IPOS_PU_GUI extends JFrame {
         return panel;
     }
 
+    /**
+     * Refreshes the shopping cart table and updates the total value shown to the user.
+     */
     private void refreshCartTable() {
         if (cartTableModel == null) {
             return;
@@ -481,6 +538,9 @@ public class IPOS_PU_GUI extends JFrame {
 
     }
 
+    /**
+     * Checks whether the current user is a member and if qualifies for the 10th-order member discount.
+     */
     private boolean qualifiesForTenthOrderDiscount() {
         if (currentUser == null || !currentUser.isCustomer()) {
             return false;
@@ -489,6 +549,9 @@ public class IPOS_PU_GUI extends JFrame {
         return (completedOrderCount + 1) % 10 == 0;
     }
 
+    /**
+     * Calculates the final cart total after applying any membership discount.
+     */
     private double calculateCartTotalWithMemberDiscount() {
         double total = 0.0;
 
@@ -504,6 +567,10 @@ public class IPOS_PU_GUI extends JFrame {
         return total;
     }
 
+    /**
+     * Simulates the checkout process, validates user input,
+     * creates the order, updates stock, and records campaign engagement.
+     */
     private void simulateCheckout() {
         if (shoppingCart.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Cart is empty!");
@@ -615,6 +682,9 @@ public class IPOS_PU_GUI extends JFrame {
         mainTabs.setSelectedIndex(3);
     }
 
+    /**
+     * Resolves the email address to be used for checkout and confirmation.
+     */
     private String resolveCheckoutEmail() {
         if (currentUser != null && currentUser.getEmail() != null && !currentUser.getEmail().trim().isEmpty()) {
             return currentUser.getEmail().trim().toLowerCase();
@@ -627,7 +697,9 @@ public class IPOS_PU_GUI extends JFrame {
         return email.trim().toLowerCase();
     }
 
-
+    /**
+     * Creates the orders tab used to display previous customer orders.
+     */
     private JPanel createOrdersPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -647,6 +719,9 @@ public class IPOS_PU_GUI extends JFrame {
         return panel;
     }
 
+    /**
+     * Refreshes the orders table with the latest order history.
+     */
     private void refreshOrdersTable() {
         if (ordersTableModel == null) {
             return;
@@ -664,6 +739,10 @@ public class IPOS_PU_GUI extends JFrame {
         }
     }
 
+    /**
+     * Creates the membership tab showing options for
+     * non-commercial and commercial membership routes.
+     */
     private JPanel createMembershipPanel() {
         JPanel panel = new JPanel(new GridLayout(2, 1, 20, 20));
         panel.setBorder(BorderFactory.createEmptyBorder(40, 40, 40, 40));
@@ -693,6 +772,10 @@ public class IPOS_PU_GUI extends JFrame {
         return panel;
     }
 
+
+    /**
+     * Finds a matching cart item for the given product.
+     */
     private CartItem findCartItem(Product product) {
         for (CartItem item : shoppingCart) {
             if (item.product.getId().equals(product.getId())) {
@@ -702,6 +785,9 @@ public class IPOS_PU_GUI extends JFrame {
         return null;
     }
 
+    /**
+     * Returns the selected row index from the cart table.
+     */
     private int getSelectedCartRow() {
         if (cartTable == null) {
             return -1;
@@ -709,6 +795,9 @@ public class IPOS_PU_GUI extends JFrame {
         return cartTable.getSelectedRow();
     }
 
+    /**
+     * Returns the currently selected cart item.
+     */
     private CartItem getSelectedCartItem() {
         int selectedRow = getSelectedCartRow();
 
@@ -719,6 +808,9 @@ public class IPOS_PU_GUI extends JFrame {
         return shoppingCart.get(selectedRow);
     }
 
+    /**
+     * Removes the selected item from the shopping cart.
+     */
     private void removeSelectedCartItem() {
         CartItem selectedItem = getSelectedCartItem();
 
@@ -733,6 +825,10 @@ public class IPOS_PU_GUI extends JFrame {
         refreshBrowseView();
     }
 
+    /**
+     * Increases the quantity of the selected cart item by one,
+     * provided stock is still available.
+     */
     private void increaseSelectedCartItemQuantity() {
         CartItem selectedItem = getSelectedCartItem();
 
@@ -754,6 +850,10 @@ public class IPOS_PU_GUI extends JFrame {
         refreshBrowseView();
     }
 
+    /**
+     * Decreases the quantity of the selected cart item by one,
+     * or removes it if the quantity reaches zero.
+     */
     private void decreaseSelectedCartItemQuantity() {
         CartItem selectedItem = getSelectedCartItem();
 
@@ -773,12 +873,18 @@ public class IPOS_PU_GUI extends JFrame {
         refreshBrowseView();
     }
 
+    /**
+     * Updates the cart button label to show the current item count.
+     */
     private void updateCartButton() {
         if (cartBtn != null) {
             cartBtn.setText("🛒 Cart (" + getCartItemCount() + ")");
         }
     }
 
+    /**
+     * Calculates the total number of items currently in the cart.
+     */
     private int getCartItemCount() {
         int total = 0;
         for (CartItem item : shoppingCart) {
@@ -787,6 +893,10 @@ public class IPOS_PU_GUI extends JFrame {
         return total;
     }
 
+    /**
+     * Loads previous orders for the current user from the database
+     * and updates the completed order count for membership discount logic.
+     */
     private void loadOrdersFromDatabase() {
         myOrders.clear();
         completedOrderCount = 0;
@@ -820,6 +930,9 @@ public class IPOS_PU_GUI extends JFrame {
         }
     }
 
+    /**
+     * Safely parses an order date string into a LocalDateTime value.
+     */
     private LocalDateTime parseOrderDateTime(String value) {
         if (value == null || value.trim().isEmpty()) {
             return LocalDateTime.now();
@@ -836,6 +949,9 @@ public class IPOS_PU_GUI extends JFrame {
         }
     }
 
+    /**
+     * Returns all active campaigns that apply to a given product.
+     */
     private List<Campaign> getActiveCampaignsForProduct(String productId) {
         List<Campaign> matchingCampaigns = new ArrayList<>();
 
@@ -850,6 +966,9 @@ public class IPOS_PU_GUI extends JFrame {
         return matchingCampaigns;
     }
 
+    /**
+     * Determines which campaign provides the best active discount for a product.
+     */
     private String getAppliedCampaignIdForProduct(Product product) {
         Campaign bestCampaign = null;
         double bestPrice = product.getRetailPrice();
@@ -869,6 +988,9 @@ public class IPOS_PU_GUI extends JFrame {
         return bestCampaign != null ? bestCampaign.getCampaignId() : null;
     }
 
+    /**
+     * Returns the product name for a given product ID.
+     */
     private String getProductName(String productId) {
         return catalogue.stream()
                 .filter(p -> p.getId().equalsIgnoreCase(productId))

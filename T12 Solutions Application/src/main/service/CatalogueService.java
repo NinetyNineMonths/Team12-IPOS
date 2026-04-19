@@ -9,8 +9,18 @@ import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service responsible for retrieving and updating product catalogue data.
+ *
+ * This class loads products from the local database and
+ * supports stock updates when orders are placed.
+ */
+
 public class CatalogueService {
 
+    /**
+     * Retrieves all products from the local product catalogue.
+     */
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
 
@@ -47,6 +57,10 @@ public class CatalogueService {
         return products;
     }
 
+    /**
+     * Reduces product stock by a given quantity if enough stock is available.
+     * Returns true if the stock update succeeds.
+     */
     public boolean reduceStock(String productId, int quantity) {
         String sql = """
             UPDATE products

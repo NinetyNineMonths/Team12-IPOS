@@ -17,11 +17,24 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Admin dashboard for the IPOS-PU subsystem.
+ *
+ * This class provides the main administrative interface for:
+ * generating reports, creating and managing campaigns,
+ * viewing database content, and logging out of the system.
+ */
+
 
 public class AdminDashboard extends JFrame {
 
     private JTextArea outputArea;
     private ReportService reportService;
+
+    /**
+     * Constructs the admin dashboard window and initialises
+     * the report service, campaign data, buttons, and output area.
+     */
 
     public AdminDashboard() {
         setTitle("Admin Dashboard");
@@ -116,6 +129,10 @@ public class AdminDashboard extends JFrame {
         button.setPreferredSize(new Dimension(150, 30));
     }
 
+    /**
+     * Generates a sales report for the last 30 days
+     * displays it in the output area.
+     */
     private void generateSalesReport() {
         try {
             LocalDate start = LocalDate.now().minusDays(30);
@@ -129,6 +146,11 @@ public class AdminDashboard extends JFrame {
         }
     }
 
+
+    /**
+     * Generates a campaign report for the last 30 days
+     * displays it in the output area.
+     */
     private void generateCampaignReport() {
         try {
             LocalDate start = LocalDate.now().minusDays(30);
@@ -142,6 +164,11 @@ public class AdminDashboard extends JFrame {
         }
     }
 
+
+    /**
+     * Opens a form dialog allowing the admin to create a new campaign.
+     * Input is validated before the campaign is saved in memory and database.
+     */
     private void openCreateCampaignDialog() {
 
         JTextField idField = new JTextField();
@@ -254,6 +281,11 @@ public class AdminDashboard extends JFrame {
         }
     }
 
+
+    /**
+     * Converts raw campaign item input into a list of CampaignItem objects.
+     * format: PRODUCT_ID:DISCOUNT, PRODUCT_ID:DISCOUNT
+     */
     private List<CampaignItem> buildCampaignItemsFromInput(String itemInput) {
         List<CampaignItem> items = new ArrayList<>();
 
@@ -288,6 +320,10 @@ public class AdminDashboard extends JFrame {
         return items;
     }
 
+
+    /**
+     * Displays all campaigns currently stored in the campaign store.
+     */
     private void viewCampaigns() {
         List<Campaign> campaigns = CampaignStore.getAllCampaigns();
 
@@ -321,6 +357,11 @@ public class AdminDashboard extends JFrame {
         outputArea.setText(sb.toString());
     }
 
+
+    /**
+     * Retrieves a product name from the catalogue using the product ID.
+     * If not found, the original ID is returned.
+     */
     private String getProductName(String productId) {
         CatalogueService catalogueService = new CatalogueService();
 
@@ -331,6 +372,10 @@ public class AdminDashboard extends JFrame {
                 .orElse(productId);
     }
 
+
+    /**
+     * Terminates an existing campaign early and updates the database.
+     */
     private void cancelCampaign() {
         String id = JOptionPane.showInputDialog(this, "Enter Campaign ID to terminate early:");
 
@@ -358,6 +403,10 @@ public class AdminDashboard extends JFrame {
 
     }
 
+
+    /**
+     * Deletes a campaign from both the campaign store and database.
+     */
     private void deleteCampaign() {
         String id = JOptionPane.showInputDialog(this, "Enter Campaign ID to delete:");
 
@@ -383,6 +432,11 @@ public class AdminDashboard extends JFrame {
         viewCampaigns();
     }
 
+
+    /**
+     * Allows the admin to edit an existing campaign's dates,
+     * discount type, and included items.
+     */
     private void modifyCampaign() {
         String id = JOptionPane.showInputDialog(this, "Enter Campaign ID to modify:");
 
@@ -498,6 +552,11 @@ public class AdminDashboard extends JFrame {
         }
     }
 
+
+    /**
+     * Checks whether a new or edited campaign overlaps with an existing campaign
+     * for the same product during the same active period.
+     */
     private String detectConflictMessage(String currentCampaignId,
                                          LocalDateTime newStart,
                                          LocalDateTime newEnd,
@@ -534,6 +593,10 @@ public class AdminDashboard extends JFrame {
         return null;
     }
 
+
+    /**
+     * Generates a campaign engagement report for a chosen campaign ID.
+     */
     private void generateEngagementReport() {
         String campaignId = JOptionPane.showInputDialog(this, "Enter Campaign ID:");
 
@@ -550,6 +613,10 @@ public class AdminDashboard extends JFrame {
         }
     }
 
+
+    /**
+     * Saves a newly created campaign and its related metrics to the database.
+     */
     private void saveCampaignToDatabase(Campaign campaign) {
         String insertCampaign = """
             INSERT INTO campaigns (campaign_id, start_date, end_date, discount_type, cancelled)
@@ -623,6 +690,10 @@ public class AdminDashboard extends JFrame {
         }
     }
 
+
+    /**
+     * Updates an existing campaign and replaces its campaign item records in the database.
+     */
     private void updateCampaignInDatabase(Campaign campaign) {
         String updateCampaign = """
             UPDATE campaigns
@@ -682,6 +753,10 @@ public class AdminDashboard extends JFrame {
         }
     }
 
+
+    /**
+     * Marks a campaign as cancelled in the database.
+     */
     private void markCampaignCancelledInDatabase(String campaignId) {
         String sql = """
             UPDATE campaigns
@@ -703,6 +778,10 @@ public class AdminDashboard extends JFrame {
         }
     }
 
+
+    /**
+     * Deletes a campaign and its related item records from the database.
+     */
     private void deleteCampaignFromDatabase(String campaignId) {
         String deleteItems = "DELETE FROM campaign_items WHERE campaign_id = ?";
         String deleteCampaign = "DELETE FROM campaigns WHERE campaign_id = ?";

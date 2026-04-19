@@ -10,6 +10,14 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 
+/**
+ * Customer dashboard for the IPOS-PU subsystem.
+ *
+ * This class provides a simple interface for customers,
+ * including navigation to the home page, catalogue, cart,
+ * promotions, and order tracking sections.
+ */
+
 public class CustomerDashboard extends JFrame {
 
     private final User user;
@@ -17,6 +25,10 @@ public class CustomerDashboard extends JFrame {
     private CardLayout cardLayout;
     private JPanel contentPanel;
 
+    /**
+     * Constructs the customer dashboard and sets up
+     * the side menu and content panels.
+     */
     public CustomerDashboard(User user, AuthService authService) {
         this.user = user;
         this.authService = authService;
@@ -77,6 +89,10 @@ public class CustomerDashboard extends JFrame {
         });
     }
 
+
+    /**
+     * Creates the home panel shown when the customer first opens the dashboard.
+     */
     private JPanel createHomePanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(new EmptyBorder(20, 20, 20, 20));
@@ -96,6 +112,10 @@ public class CustomerDashboard extends JFrame {
         return panel;
     }
 
+
+    /**
+     * Creates the catalogue panel and displays products in a table.
+     */
     private JPanel createCataloguePanel() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(new EmptyBorder(20, 20, 20, 20));

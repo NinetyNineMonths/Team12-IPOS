@@ -6,8 +6,19 @@ import main.model.User;
 import java.sql.*;
 import java.util.UUID;
 
+/**
+ * Service responsible for user authentication and account management.
+ *
+ * This class handles user login, password changes,
+ * non-commercial member registration, and email existence checks.
+ */
+
 public class AuthService {
 
+    /**
+     * Attempts to log a user into the system using their email and password.
+     * Returns a User object if authentication is successful, otherwise null.
+     */
     public User login(String email, String password) {
         if (email == null || password == null) return null;
 
@@ -36,6 +47,10 @@ public class AuthService {
         }
     }
 
+    /**
+     * Changes the password for a given user and updates their first-login status.
+     * Returns true if the password is updated successfully.
+     */
     public boolean changePassword(User user, String newPassword) {
         if (user == null || newPassword == null || newPassword.trim().isEmpty()) return false;
         if (!newPassword.matches("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z\\d]).{10,}$")) return false;
@@ -59,6 +74,10 @@ public class AuthService {
         }
     }
 
+    /**
+     * Registers a new non-commercial customer account
+     * and returns the generated temporary password.
+     */
     public String registerNonCommercialMember(String fullName, String email) {
         if (fullName == null || fullName.trim().isEmpty()) return null;
         if (email == null || email.trim().isEmpty()) return null;
@@ -86,6 +105,9 @@ public class AuthService {
         }
     }
 
+    /**
+     * Checks whether a user account already exists for the given email address.
+     */
     public boolean emailExists(String email) {
         if (email == null || email.trim().isEmpty()) return false;
 

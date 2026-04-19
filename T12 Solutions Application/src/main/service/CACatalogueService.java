@@ -1,4 +1,4 @@
-package service;
+package main.service;
 
 import main.model.Product;
 
@@ -9,12 +9,23 @@ import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service used to retrieve product data from the CA subsystem catalogue.
+ *
+ * This class connects to the external catalogue database and
+ * maps catalogue records into Product objects for use in IPOS-PU.
+ */
+
 public class CACatalogueService {
 
     private static final String URL = "jdbc:postgresql://interchange.proxy.rlwy.net:32051/railway";
     private static final String USER = "postgres";
     private static final String PASSWORD = "masterkey";
 
+    /**
+     * Retrieves all catalogue items from the CA database
+     * and converts them into a list of Product objects.
+     */
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
 
