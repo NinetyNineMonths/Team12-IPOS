@@ -75,16 +75,6 @@ public class DatabaseManager {
             );
         """;
 
-//        String productsTable = """
-//            CREATE TABLE IF NOT EXISTS products (
-//                product_id    TEXT    PRIMARY KEY,
-//                product_name  TEXT    NOT NULL,
-//                category      TEXT    NOT NULL,
-//                price         REAL    NOT NULL,
-//                stock         INTEGER NOT NULL
-//            );
-//        """;
-
         String ordersTable = """
             CREATE TABLE IF NOT EXISTS orders (
                 order_id      TEXT    PRIMARY KEY,
@@ -258,20 +248,4 @@ public class DatabaseManager {
             }
         }
     }
-
-//    private static void seedProductsIfEmpty(Connection conn) throws SQLException {
-//        try (ResultSet rs = conn.createStatement()
-//                .executeQuery("SELECT COUNT(*) FROM products")) {
-//            if (rs.getInt(1) == 0) {
-//                conn.createStatement().execute("""
-//                INSERT INTO products (product_id, product_name, category, price, stock) VALUES
-//                ('PARA001', 'Paracetamol 500mg (16 tablets)', 'Pain relief', 2.99, 120),
-//                ('IBU002', 'Ibuprofen 400mg (24 tablets)', 'Anti-inflammatory', 4.49, 85),
-//                ('VIT003', 'Vitamin D3 1000IU (90 capsules)', 'Supplements', 6.99, 200),
-//                ('ALL004', 'Allergy Relief (Cetirizine 10mg)', 'Antihistamine', 3.79, 45),
-//                ('BAND005', 'Bandages & Plasters Pack', 'First Aid', 5.49, 30)
-//            """);
-//            }
-//        }
-//    }
 }

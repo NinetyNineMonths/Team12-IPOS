@@ -188,12 +188,8 @@ public class CommercialApplicationFrame extends JFrame {
                 return;
             }
 
-            // Step 1 — save locally to PU's own SQLite database
             applicationService.saveApplication(application);
 
-            // Step 2 — forward to SA's shared PostgreSQL database.
-            // SA will review, update status, and send the outcome email via their own system.
-            // PU does NOT send the approval/rejection email — SA handles that.
             SAApplicationDbAdapter saAdapter = new SAApplicationDbAdapter();
             SAApplicationDbAdapter.SubmitResult saResult = saAdapter.submitApplication(application);
 

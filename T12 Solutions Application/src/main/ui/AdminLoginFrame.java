@@ -71,17 +71,5 @@ public class AdminLoginFrame extends JFrame {
 
         new AdminDashboard().setVisible(true);
         dispose();
-//
-//        if (user == null || !user.isAdmin()) {
-//            JOptionPane.showMessageDialog(this,
-//                    "Invalid admin login.",
-//                    "Login Failed",
-//                    JOptionPane.ERROR_MESSAGE);
-//            return;
-//        }
-//
-//        new AdminDashboard(user, authService).setVisible(true);
-//        dispose();
-        //small change
     }
 }

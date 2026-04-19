@@ -12,9 +12,6 @@ import java.util.List;
 
 public class PromotionService {
 
-//    private static final DateTimeFormatter FORMATTER =
-//            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
-
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     // To create campaigns
@@ -208,9 +205,6 @@ public class PromotionService {
 
     public boolean deleteCampaign(String campaignId) {
         if (campaignId == null || campaignId.trim().isEmpty()) return false;
-
-//        String deleteItems = "DELETE FROM campaign_items WHERE campaign_id = ?";
-//        String deleteCampaign = "DELETE FROM campaigns WHERE campaign_id = ?";
 
         String deleteItemMetrics = "DELETE FROM campaign_item_metrics WHERE campaign_id = ?";
         String deleteCampaignMetrics = "DELETE FROM campaign_metrics WHERE campaign_id = ?";

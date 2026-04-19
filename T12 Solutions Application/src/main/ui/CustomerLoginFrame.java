@@ -81,7 +81,6 @@ public class CustomerLoginFrame extends JFrame {
 
 
         new IPOS_PU_GUI(authService, user).setVisible(true);
-//        new CustomerDashboard(user, authService).setVisible(true);
         dispose();
     }
 }

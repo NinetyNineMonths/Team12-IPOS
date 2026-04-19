@@ -59,9 +59,6 @@ public class ReportService {
             stmt.setString(1, startDate.toString());
             stmt.setString(2, endDate.toString());
 
-//            stmt.setObject(1, startDate);
-//            stmt.setObject(2, endDate);
-
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String itemId = rs.getString("item_id");

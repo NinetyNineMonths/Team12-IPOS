@@ -149,7 +149,6 @@ public class AdminDashboard extends JFrame {
         JTextField endField = new JTextField("2026-04-30");
         JTextField discountTypeField = new JTextField("Percentage");
         JTextField itemsField = new JTextField("10000001:15, 40000001:10");
-//        JTextField itemsField = new JTextField("PARA001:15, VIT003:10");
 
         JPanel panel = new JPanel(new GridLayout(0, 1));
 
@@ -311,7 +310,6 @@ public class AdminDashboard extends JFrame {
             for (CampaignItem item : c.getItems()) {
                 sb.append(" - ")
                         .append(getProductName(item.getItemId()))
-//                        .append(item.getItemId())
                         .append(" : ")
                         .append(item.getDiscountRate())
                         .append("% off\n");
@@ -415,8 +413,6 @@ public class AdminDashboard extends JFrame {
         }
 
         JTextField itemsField = new JTextField(itemsText.toString());
-//        JTextArea itemsArea = new JTextArea(5, 25);
-//        itemsArea.setText(itemsText.toString());
 
         JPanel panel = new JPanel(new GridLayout(0, 1));
         panel.add(new JLabel("Start Date (YYYY-MM-DD):"));
@@ -430,7 +426,6 @@ public class AdminDashboard extends JFrame {
 
         panel.add(new JLabel("Items (PRODUCT_ID:DISCOUNT, comma separated):"));
         panel.add(itemsField);
-//        panel.add(new JScrollPane(itemsArea));
 
         int result = JOptionPane.showConfirmDialog(
                 this,
@@ -456,7 +451,6 @@ public class AdminDashboard extends JFrame {
                 LocalDateTime end = endDate.atTime(23, 59);
                 String discountType = discountTypeField.getText().trim();
                 List<CampaignItem> items = buildCampaignItemsFromInput(itemsField.getText());
-//                List<CampaignItem> items = buildCampaignItemsFromInput(itemsArea.getText());
 
                 String conflictMessage = detectConflictMessage(existing.getCampaignId(), start, end, items);
                 if (conflictMessage != null) {
